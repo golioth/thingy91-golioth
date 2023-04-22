@@ -21,7 +21,12 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 static struct golioth_client *client;
 /* Add Sensor structs here */
 
+
+
 const struct device *light = DEVICE_DT_GET_ONE(rohm_bh1749);
+const struct device *const weather = DEVICE_DT_GET_ONE(bosch_bme680);
+
+
 
 
 /* Formatting string for sending sensor JSON to Golioth */
@@ -44,11 +49,17 @@ void app_work_sensor_read(void)
 	int err;
 	char json_buf[256];
 
+
+	
+
 	struct sensor_value BH1749_RED;
 	struct sensor_value BH1749_GREEN;
 	struct sensor_value BH1749_BLUE;
 	struct sensor_value BH1749_IR;
-
+	struct sensor_value temp;
+	struct sensor_value press;
+	struct sensor_value humidity;
+	struct sensor_value gas_res;
 
 
 
@@ -98,11 +109,19 @@ void app_work_sensor_read(void)
 	}
 	printk("BH1749 IR: %d\n", BH1749_IR.val1);
 
+	// BME680 
+
+	sensor_sample_fetch(weather);
+	sensor_channel_get(weather, SENSOR_CHAN_AMBIENT_TEMP, &temp);
+	sensor_channel_get(weather, SENSOR_CHAN_PRESS, &press);
+	sensor_channel_get(weather, SENSOR_CHAN_HUMIDITY, &humidity);
+	sensor_channel_get(weather, SENSOR_CHAN_GAS_RES, &gas_res);
 
 
-
-
-
+	printk("T: %d.%06d; P: %d.%06d; H: %d.%06d; G: %d.%06d\n",
+				temp.val1, temp.val2, press.val1, press.val2,
+				humidity.val1, humidity.val2, gas_res.val1,
+				gas_res.val2);
 
 
 
