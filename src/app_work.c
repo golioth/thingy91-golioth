@@ -21,6 +21,9 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 static struct golioth_client *client;
 /* Add Sensor structs here */
 
+const struct device *light = DEVICE_DT_GET_ONE(rohm_bh1749);
+
+
 /* Formatting string for sending sensor JSON to Golioth */
 #define JSON_FMT	"{\"counter\":%d}"
 
@@ -41,11 +44,68 @@ void app_work_sensor_read(void)
 	int err;
 	char json_buf[256];
 
+	struct sensor_value BH1749_RED;
+	struct sensor_value BH1749_GREEN;
+	struct sensor_value BH1749_BLUE;
+	struct sensor_value BH1749_IR;
+
+
+
+
 	/* Log battery levels if possible */
 	IF_ENABLED(CONFIG_ALUDEL_BATTERY_MONITOR, (log_battery_info();));
 
 	/* For this demo, we just send Hello to Golioth */
 	static uint8_t counter;
+
+
+
+
+
+
+	err = sensor_sample_fetch_chan(light, SENSOR_CHAN_ALL);
+	/* The sensor does only support fetching SENSOR_CHAN_ALL */
+	if (err) {
+		printk("sensor_sample_fetch failed err %d\n", err);
+		return;
+	}
+
+	err = sensor_channel_get(light, SENSOR_CHAN_RED, &BH1749_RED);
+	if (err) {
+		printk("sensor_channel_get failed err %d\n", err);
+		return;
+	}
+	printk("BH1749 RED: %d\n", BH1749_RED.val1);
+
+	err = sensor_channel_get(light, SENSOR_CHAN_GREEN, &BH1749_GREEN);
+	if (err) {
+		printk("sensor_channel_get failed err %d\n", err);
+		return;
+	}
+	printk("BH1749 GREEN: %d\n", BH1749_GREEN.val1);
+
+	err = sensor_channel_get(light, SENSOR_CHAN_BLUE, &BH1749_BLUE);
+	if (err) {
+		printk("sensor_channel_get failed err %d\n", err);
+		return;
+	}
+	printk("BH1749 BLUE: %d\n", BH1749_BLUE.val1);
+
+	err = sensor_channel_get(light, SENSOR_CHAN_IR, &BH1749_IR);
+	if (err) {
+		printk("sensor_channel_get failed err %d\n", err);
+		return;
+	}
+	printk("BH1749 IR: %d\n", BH1749_IR.val1);
+
+
+
+
+
+
+
+
+
 
 	LOG_INF("Sending hello! %d", counter);
 
