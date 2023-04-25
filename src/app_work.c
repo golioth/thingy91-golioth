@@ -48,11 +48,11 @@ K_SEM_DEFINE(buzzer_initialized_sem, 0, 1); /* Wait until buzzer is ready */
 
 #define BUZZER_STACK 1024
 
-extern void buzzer_song_thread(void *d0, void *d1, void *d2) {
+extern void buzzer_thread(void *d0, void *d1, void *d2) {
 	/* Block until buzzer is available */
 	k_sem_take(&buzzer_initialized_sem, K_FOREVER);
 	while(1) {
-		LOG_DBG("Playing song from buzzer");
+		//LOG_DBG("Playing song from buzzer");
 		// play song
 
 		switch(song)
@@ -60,14 +60,14 @@ extern void buzzer_song_thread(void *d0, void *d1, void *d2) {
 			case 0:
 				LOG_DBG("playing beep");
 				pwm_set_dt(&sBuzzer,PWM_HZ(freq),PWM_HZ(freq)/2);
-				k_msleep(200);
+				k_msleep(300);
 				break;
 			case 1:
 				LOG_DBG("playing funky town");
 				pwm_set_dt(&sBuzzer,PWM_HZ(freq*2),PWM_HZ(freq)/2);
-				k_msleep(100);
+				k_msleep(200);
 				pwm_set_dt(&sBuzzer,PWM_HZ(freq*2),PWM_HZ(freq)/2);
-				k_msleep(100);
+				k_msleep(200);
 				break;
 			default:
 				LOG_WRN("invalid switch state");
@@ -78,7 +78,7 @@ extern void buzzer_song_thread(void *d0, void *d1, void *d2) {
 		pwm_set_pulse_dt(&sBuzzer, 0);
 
 		// Sleepy time!
-		LOG_DBG("Putting song thread to sleep until woken");
+		//LOG_DBG("Putting song thread to sleep until woken");
 		k_sleep(K_FOREVER);
 	}
 }
@@ -92,8 +92,8 @@ int app_buzzer_init()
 	return 0;
 }
 
-K_THREAD_DEFINE(buzzer_song_tid, BUZZER_STACK,
-            buzzer_song_thread, NULL, NULL, NULL,
+K_THREAD_DEFINE(buzzer_tid, BUZZER_STACK,
+            buzzer_thread, NULL, NULL, NULL,
             K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
 
 
@@ -101,20 +101,31 @@ K_THREAD_DEFINE(buzzer_song_tid, BUZZER_STACK,
 void play_beep_once(void)
 {
 	song = beep;
-	k_wakeup(buzzer_song_tid);
+	k_wakeup(buzzer_tid);
 }
 
 void play_funkytown_once(void)
 {
 	song = funky_town;
-	k_wakeup(buzzer_song_tid);
+	k_wakeup(buzzer_tid);
 }
 
 
 
-
 /* Formatting string for sending sensor JSON to Golioth */
-#define JSON_FMT	"{\"counter\":%d}"
+#define JSON_FMT "{\
+\"weather\":{\
+	\"tem\":%d.%d,\
+	\"pre\":%d.%d,\
+	\"hum\":%d.%d,\
+	\"gas\":%d.%d\
+},\
+\"light\":{\
+	\"red\":%d,\
+	\"blue\":%d,\
+	\"green\":%d,\
+	\"ir\":%d}\
+}"
 
 /* Callback for LightDB Stream */
 static int async_error_handler(struct golioth_req_rsp *rsp)
@@ -126,20 +137,12 @@ static int async_error_handler(struct golioth_req_rsp *rsp)
 	return 0;
 }
 
-/* This will be called by the main() loop */
+/* This will be called by the main() loop after delays or on button presses*/
 /* Do all of your work here! */
 void app_work_sensor_read(void)
 {
 	int err;
 	char json_buf[256];
-
-	// // PWM variables
-
-	// uint32_t max_period = MAX_PERIOD;
-	// uint32_t period;
-	// uint8_t dir = 0U;
-
-	// period = max_period;
 
 	// Sensor value structs
 
@@ -152,49 +155,22 @@ void app_work_sensor_read(void)
 	struct sensor_value humidity;
 	struct sensor_value gas_res;
 
-
-
 	/* Log battery levels if possible */
 	IF_ENABLED(CONFIG_ALUDEL_BATTERY_MONITOR, (log_battery_info();));
 
-	/* For this demo, we just send Hello to Golioth */
-	static uint8_t counter;
-
+	// BH1749
 
 	err = sensor_sample_fetch_chan(light, SENSOR_CHAN_ALL);
 	/* The sensor does only support fetching SENSOR_CHAN_ALL */
 	if (err) {
-		printk("sensor_sample_fetch failed err %d\n", err);
+		LOG_ERR("sensor_sample_fetch failed err %d", err);
 		return;
 	}
-
-	err = sensor_channel_get(light, SENSOR_CHAN_RED, &BH1749_RED);
-	if (err) {
-		printk("sensor_channel_get failed err %d\n", err);
-		return;
-	}
-	printk("BH1749 RED: %d\n", BH1749_RED.val1);
-
-	err = sensor_channel_get(light, SENSOR_CHAN_GREEN, &BH1749_GREEN);
-	if (err) {
-		printk("sensor_channel_get failed err %d\n", err);
-		return;
-	}
-	printk("BH1749 GREEN: %d\n", BH1749_GREEN.val1);
-
-	err = sensor_channel_get(light, SENSOR_CHAN_BLUE, &BH1749_BLUE);
-	if (err) {
-		printk("sensor_channel_get failed err %d\n", err);
-		return;
-	}
-	printk("BH1749 BLUE: %d\n", BH1749_BLUE.val1);
-
-	err = sensor_channel_get(light, SENSOR_CHAN_IR, &BH1749_IR);
-	if (err) {
-		printk("sensor_channel_get failed err %d\n", err);
-		return;
-	}
-	printk("BH1749 IR: %d\n", BH1749_IR.val1);
+	sensor_channel_get(light, SENSOR_CHAN_RED, &BH1749_RED);
+	sensor_channel_get(light, SENSOR_CHAN_GREEN, &BH1749_GREEN);
+	sensor_channel_get(light, SENSOR_CHAN_BLUE, &BH1749_BLUE);
+	sensor_channel_get(light, SENSOR_CHAN_IR, &BH1749_IR);
+	LOG_DBG("BH1749 R: %d, G: %d, B: %d, IR: %d", BH1749_RED.val1,BH1749_GREEN.val1,BH1749_BLUE.val1,BH1749_IR.val1);
 
 	// BME680 
 
@@ -205,24 +181,28 @@ void app_work_sensor_read(void)
 	sensor_channel_get(weather, SENSOR_CHAN_GAS_RES, &gas_res);
 
 
-	printk("T: %d.%06d; P: %d.%06d; H: %d.%06d; G: %d.%06d\n",
+	LOG_DBG("T: %d.%06d; P: %d.%06d; H: %d.%06d; G: %d.%06d",
 				temp.val1, temp.val2, press.val1, press.val2,
 				humidity.val1, humidity.val2, gas_res.val1,
 				gas_res.val2);
 
 
+	// Format data for LightDB Stream
 
+	snprintk(json_buf, sizeof(json_buf), JSON_FMT,
+		temp.val1, temp.val2,
+		press.val1, press.val2,
+		humidity.val1, humidity.val2,
+		gas_res.val1, gas_res.val2,
+		BH1749_RED.val1,
+		BH1749_GREEN.val1,
+		BH1749_BLUE.val1,
+		BH1749_IR.val1
+		);
 
-	LOG_INF("Sending hello! %d", counter);
+	// LOG_DBG("%s",json_buf);
 
-	err = golioth_send_hello(client);
-	if (err) {
-		LOG_WRN("Failed to send hello!");
-	}
-
-	/* Send sensor data to Golioth */
-	/* For this demo we just fake it */
-	snprintk(json_buf, sizeof(json_buf), JSON_FMT, counter);
+	// Send to LightDB Stream on "sensor" endpoint
 
 	err = golioth_stream_push_cb(client, "sensor",
 			GOLIOTH_CONTENT_FORMAT_APP_JSON,
@@ -232,16 +212,8 @@ void app_work_sensor_read(void)
 		LOG_ERR("Failed to send sensor data to Golioth: %d", err);
 	}
 
-	/* Update slide values on Ostentus
-	 *  -values should be sent as strings
-	 *  -use the enum from app_work.h for slide key values
-	 */
-	snprintk(json_buf, 6, "%d", counter);
-	slide_set(UP_COUNTER, json_buf, strlen(json_buf));
-	snprintk(json_buf, 6, "%d", 255-counter);
-	slide_set(DN_COUNTER, json_buf, strlen(json_buf));
+	//play_funkytown_once();
 
-	++counter;
 }
 
 void app_work_init(struct golioth_client *work_client)
