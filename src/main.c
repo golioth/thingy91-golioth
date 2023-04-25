@@ -102,6 +102,7 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 					uint32_t pins)
 {
 	LOG_DBG("Button pressed at %d", k_cycle_get_32());
+	play_beep_once();
 	k_wakeup(_system_thread);
 }
 
@@ -185,6 +186,12 @@ void main(void)
 			 return;
 		}
 	}
+
+	err = app_buzzer_init();
+	if (err) {
+		LOG_ERR("Unable to configure buzzer");
+	}
+
 
 	/* Set up user button */
 	err = gpio_pin_configure_dt(&user_btn, GPIO_INPUT);

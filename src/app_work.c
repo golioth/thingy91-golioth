@@ -22,13 +22,6 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 #include "battery_monitor/battery.h"
 #endif
 
-// // From Jared's video about PWM
-
-// #define PWM_BUZZER_NODE DT_NODELABEL(pwm_buzzer0)
-// #define PWM_CTRL DT_PWMS_CTLR(PWM_BUZZER_NODE)
-// #define PWM_CHAN DT_PWMS_CHANNEL(PWM_BUZZER_NODE)
-// #define PWM_FLAGS DT_PWMS_FLAGS (PWM_BUZZER_NODE)
-
 static struct golioth_client *client;
 
 
@@ -39,16 +32,83 @@ const struct device *weather = DEVICE_DT_GET_ONE(bosch_bme680);
 
 const struct pwm_dt_spec sBuzzer = PWM_DT_SPEC_GET(DT_ALIAS(buzzer_pwm));
 
+int freq = 880;
+typedef enum 
+	{
+		beep,
+		funky_town,
+		other_song	
+	}song_choice;
 
-static bool sBuzzerState;
-int freq = 440;
+song_choice song = 0;
 
-// const struct device *buzzer_pwm_dev = DEVICE_DT_GET(PWM_CTRL);
+/* Thread reads plays song on buzzer */
 
-// if (buzzer_pwm_dev == NULL||!device_is_ready(buzzer_pwm_dev))
-// {
-// 	LOG_ERR("Error: PWM device is not ready");
-// }
+K_SEM_DEFINE(buzzer_initialized_sem, 0, 1); /* Wait until buzzer is ready */
+
+#define BUZZER_STACK 1024
+
+extern void buzzer_song_thread(void *d0, void *d1, void *d2) {
+	/* Block until buzzer is available */
+	k_sem_take(&buzzer_initialized_sem, K_FOREVER);
+	while(1) {
+		LOG_DBG("Playing song from buzzer");
+		// play song
+
+		switch(song)
+		{
+			case 0:
+				LOG_DBG("playing beep");
+				pwm_set_dt(&sBuzzer,PWM_HZ(freq),PWM_HZ(freq)/2);
+				k_msleep(200);
+				break;
+			case 1:
+				LOG_DBG("playing funky town");
+				pwm_set_dt(&sBuzzer,PWM_HZ(freq*2),PWM_HZ(freq)/2);
+				k_msleep(100);
+				pwm_set_dt(&sBuzzer,PWM_HZ(freq*2),PWM_HZ(freq)/2);
+				k_msleep(100);
+				break;
+			default:
+				LOG_WRN("invalid switch state");
+				break;
+		}
+
+		// turn buzzer off (pulse duty to 0)
+		pwm_set_pulse_dt(&sBuzzer, 0);
+
+		// Sleepy time!
+		LOG_DBG("Putting song thread to sleep until woken");
+		k_sleep(K_FOREVER);
+	}
+}
+
+int app_buzzer_init()
+{
+	if (!device_is_ready(sBuzzer.dev)) {
+		return -ENODEV;
+	}
+	k_sem_give(&buzzer_initialized_sem);
+	return 0;
+}
+
+K_THREAD_DEFINE(buzzer_song_tid, BUZZER_STACK,
+            buzzer_song_thread, NULL, NULL, NULL,
+            K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
+
+
+
+void play_beep_once(void)
+{
+	song = beep;
+	k_wakeup(buzzer_song_tid);
+}
+
+void play_funkytown_once(void)
+{
+	song = funky_town;
+	k_wakeup(buzzer_song_tid);
+}
 
 
 
@@ -64,30 +124,6 @@ static int async_error_handler(struct golioth_req_rsp *rsp)
 		return rsp->err;
 	}
 	return 0;
-}
-
-void BuzzerSetState(bool onOff)
-{
-	sBuzzerState = onOff;
-	pwm_set_pulse_dt(&sBuzzer, sBuzzerState ? (sBuzzer.period / 2) : 0);
-}
-
-void BuzzerToggleState()
-{
-	BuzzerSetState(!sBuzzerState);
-}
-
-void BuzzerSetFreq(int freq)
-{
-	if (freq < BUZZER_MAX_FREQ && freq > BUZZER_MIN_FREQ)
-	{
-		pwm_set_dt(&sBuzzer,PWM_HZ(freq),PWM_HZ(freq)/2);
-		LOG_DBG("Frequency set to %d Hz", freq);
-	}
-	else
-	{
-		LOG_ERR("Frequency %d is outside allowable range", freq);
-	}	
 }
 
 /* This will be called by the main() loop */
@@ -124,15 +160,6 @@ void app_work_sensor_read(void)
 	/* For this demo, we just send Hello to Golioth */
 	static uint8_t counter;
 
-
-	// err = pwm_pin_set_usec(buzzer_pwm_dev, PWM_CHAN, LED_PWM_PERIOD_US, pulse, PWM_FLAGS);
-	// if (err)
-	// {
-	// 	LOG_ERR("Pwm set fail. Err: %i", err);	
-	// }
-
-	BuzzerSetFreq(freq);
-	freq+=40;
 
 	err = sensor_sample_fetch_chan(light, SENSOR_CHAN_ALL);
 	/* The sensor does only support fetching SENSOR_CHAN_ALL */
@@ -220,6 +247,6 @@ void app_work_sensor_read(void)
 void app_work_init(struct golioth_client *work_client)
 {
 	client = work_client;
-	BuzzerSetState(true);
+
 }
 
