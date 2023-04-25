@@ -24,7 +24,8 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 
 static struct golioth_client *client;
 
-
+static const struct gpio_dt_spec user_led = GPIO_DT_SPEC_GET(
+		DT_ALIAS(user_led), gpios);
 
 /* Sensor device structs */
 const struct device *light = DEVICE_DT_GET_ONE(rohm_bh1749);
@@ -110,6 +111,15 @@ void play_funkytown_once(void)
 	k_wakeup(buzzer_tid);
 }
 
+
+/* Set (unset) LED indicators for user action */
+void user_led_set(uint8_t state) {
+	uint8_t pin_state = state ? 1 : 0;
+	/* Turn on Golioth logo LED once connected */
+	gpio_pin_set_dt(&user_led, pin_state);
+	/* Change the state of the Golioth LED on Ostentus */
+	led_user_set(pin_state);
+}
 
 
 /* Formatting string for sending sensor JSON to Golioth */
@@ -213,6 +223,10 @@ void app_work_sensor_read(void)
 	}
 
 	//play_funkytown_once();
+
+	user_led_set(1);
+	k_msleep(200);
+	user_led_set(0);
 
 }
 
