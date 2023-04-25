@@ -9,6 +9,7 @@
 
 void app_work_init(struct golioth_client *work_client);
 void app_work_sensor_read(void);
+void BuzzerSetFreq(int);
 
 /**
  * Each Ostentus slide needs a unique key. You may add additional slides by
@@ -18,5 +19,9 @@ typedef enum {
 	UP_COUNTER,
 	DN_COUNTER
 } slide_key;
+
+#define BUZZER_MAX_FREQ 2500
+#define BUZZER_MIN_FREQ 75
+
 
 #endif /* __APP_WORK_H__ */

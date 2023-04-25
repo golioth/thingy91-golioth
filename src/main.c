@@ -225,5 +225,6 @@ void main(void)
 		app_work_sensor_read();
 
 		k_sleep(K_SECONDS(get_loop_delay_s()));
+
 	}
 }

@@ -10,6 +10,10 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 #include <net/golioth/system_client.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/pwm.h>
+// #include <zephyr/drivers/led.h>
+
 
 #include "app_work.h"
 #include "libostentus/libostentus.h"
@@ -18,13 +22,33 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 #include "battery_monitor/battery.h"
 #endif
 
+// // From Jared's video about PWM
+
+// #define PWM_BUZZER_NODE DT_NODELABEL(pwm_buzzer0)
+// #define PWM_CTRL DT_PWMS_CTLR(PWM_BUZZER_NODE)
+// #define PWM_CHAN DT_PWMS_CHANNEL(PWM_BUZZER_NODE)
+// #define PWM_FLAGS DT_PWMS_FLAGS (PWM_BUZZER_NODE)
+
 static struct golioth_client *client;
-/* Add Sensor structs here */
 
 
 
+/* Sensor device structs */
 const struct device *light = DEVICE_DT_GET_ONE(rohm_bh1749);
-const struct device *const weather = DEVICE_DT_GET_ONE(bosch_bme680);
+const struct device *weather = DEVICE_DT_GET_ONE(bosch_bme680);
+
+const struct pwm_dt_spec sBuzzer = PWM_DT_SPEC_GET(DT_ALIAS(buzzer_pwm));
+
+
+static bool sBuzzerState;
+int freq = 440;
+
+// const struct device *buzzer_pwm_dev = DEVICE_DT_GET(PWM_CTRL);
+
+// if (buzzer_pwm_dev == NULL||!device_is_ready(buzzer_pwm_dev))
+// {
+// 	LOG_ERR("Error: PWM device is not ready");
+// }
 
 
 
@@ -42,6 +66,30 @@ static int async_error_handler(struct golioth_req_rsp *rsp)
 	return 0;
 }
 
+void BuzzerSetState(bool onOff)
+{
+	sBuzzerState = onOff;
+	pwm_set_pulse_dt(&sBuzzer, sBuzzerState ? (sBuzzer.period / 2) : 0);
+}
+
+void BuzzerToggleState()
+{
+	BuzzerSetState(!sBuzzerState);
+}
+
+void BuzzerSetFreq(int freq)
+{
+	if (freq < BUZZER_MAX_FREQ && freq > BUZZER_MIN_FREQ)
+	{
+		pwm_set_dt(&sBuzzer,PWM_HZ(freq),PWM_HZ(freq)/2);
+		LOG_DBG("Frequency set to %d Hz", freq);
+	}
+	else
+	{
+		LOG_ERR("Frequency %d is outside allowable range", freq);
+	}	
+}
+
 /* This will be called by the main() loop */
 /* Do all of your work here! */
 void app_work_sensor_read(void)
@@ -49,8 +97,15 @@ void app_work_sensor_read(void)
 	int err;
 	char json_buf[256];
 
+	// // PWM variables
 
-	
+	// uint32_t max_period = MAX_PERIOD;
+	// uint32_t period;
+	// uint8_t dir = 0U;
+
+	// period = max_period;
+
+	// Sensor value structs
 
 	struct sensor_value BH1749_RED;
 	struct sensor_value BH1749_GREEN;
@@ -70,9 +125,14 @@ void app_work_sensor_read(void)
 	static uint8_t counter;
 
 
+	// err = pwm_pin_set_usec(buzzer_pwm_dev, PWM_CHAN, LED_PWM_PERIOD_US, pulse, PWM_FLAGS);
+	// if (err)
+	// {
+	// 	LOG_ERR("Pwm set fail. Err: %i", err);	
+	// }
 
-
-
+	BuzzerSetFreq(freq);
+	freq+=40;
 
 	err = sensor_sample_fetch_chan(light, SENSOR_CHAN_ALL);
 	/* The sensor does only support fetching SENSOR_CHAN_ALL */
@@ -160,5 +220,6 @@ void app_work_sensor_read(void)
 void app_work_init(struct golioth_client *work_client)
 {
 	client = work_client;
+	BuzzerSetState(true);
 }
 

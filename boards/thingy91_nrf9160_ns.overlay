@@ -4,5 +4,17 @@
 		click-i2c = &i2c2;
 		golioth-led = &green_led;
 		sw1 = &button0;
+		buzzer-pwm = &buzzer;
 	};
+	pwmbuzzer {
+		compatible = "pwm-leds";
+		status = "okay";
+
+		buzzer: buzzer_pwm {
+			pwms = <&pwm1 0 PWM_HZ(880) PWM_POLARITY_NORMAL>;
+			label = "PWM_1";
+		};
+	};
+
+
 };
