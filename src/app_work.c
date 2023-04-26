@@ -22,8 +22,9 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 #include "battery_monitor/battery.h"
 #endif
 
-#define FUNKYTOWN_NOTES 12
+#define FUNKYTOWN_NOTES 13
 #define MARIO_NOTES 37
+#define GOLIOTH_NOTES 12
 
 static struct golioth_client *client;
 
@@ -36,26 +37,24 @@ const struct device *weather = DEVICE_DT_GET_ONE(bosch_bme680);
 
 const struct pwm_dt_spec sBuzzer = PWM_DT_SPEC_GET(DT_ALIAS(buzzer_pwm));
 
-int freq = 880;
-
 enum song_choice
 	{
 		beep,
 		funkytown,
-		mario	
+		mario,
+		golioth	
 	};
 
-enum song_choice song = 0;
+enum song_choice song = 3;
 
 struct note_duration {
     int note;	// hz
     int duration; // msec
 };
 
-
-
 struct note_duration funkytown_song[FUNKYTOWN_NOTES] = {
     {.note = C5, .duration = quarter},
+	{.note = REST, .duration = eigth},
 	{.note = C5, .duration = quarter},
     {.note = Bb4, .duration = quarter},
 	{.note = C5, .duration = quarter},
@@ -80,7 +79,7 @@ struct note_duration mario_song[MARIO_NOTES] = {
 	{.note = E6, .duration = half},
 	{.note = G6, .duration = half},
 	{.note = REST, .duration = quarter},
-	{.note = G4, .duration = half},
+	{.note = G4, .duration = whole},
 	{.note = REST, .duration = whole},
 	//break in sound
 	{.note = C6, .duration = half},
@@ -109,9 +108,22 @@ struct note_duration mario_song[MARIO_NOTES] = {
 	{.note = B5, .duration = quarter}
 };
 
+struct note_duration golioth_song[GOLIOTH_NOTES] = {   
+	{.note = D5, .duration = whole},
+	{.note = REST, .duration = eigth},
+	{.note = A5, .duration = quarter},
+    {.note = E5, .duration = quarter},
+	{.note = D5, .duration = quarter},
+	{.note = REST, .duration = whole},
+	{.note = B5, .duration = whole},
+	{.note = REST, .duration = quarter},
+	{.note = E5, .duration = quarter},
+	{.note = REST, .duration = eigth},
+	{.note = E6, .duration = quarter},
+	{.note = F4, .duration = quarter}
+};
 
-
-/* Thread reads plays song on buzzer */
+/* Thread plays song on buzzer */
 
 K_SEM_DEFINE(buzzer_initialized_sem, 0, 1); /* Wait until buzzer is ready */
 
@@ -121,18 +133,16 @@ extern void buzzer_thread(void *d0, void *d1, void *d2) {
 	/* Block until buzzer is available */
 	k_sem_take(&buzzer_initialized_sem, K_FOREVER);
 	while(1) {
-		//LOG_DBG("Playing song from buzzer");
-		// play song
 
 		switch(song)
 		{
 			case 0:
-				LOG_DBG("playing beep");
-				pwm_set_dt(&sBuzzer,PWM_HZ(freq),PWM_HZ(freq)/2);
-				k_msleep(300);
+				LOG_DBG("beep");
+				pwm_set_dt(&sBuzzer,PWM_HZ(1000),PWM_HZ(1000)/2);
+				k_msleep(100);
 				break;
 			case 1:
-				LOG_DBG("playing funky town");
+				LOG_DBG("funkytown");
 				for (int i = 0; i< FUNKYTOWN_NOTES;i++)
 				{
 					if (funkytown_song[i].note<10)
@@ -147,12 +157,11 @@ extern void buzzer_thread(void *d0, void *d1, void *d2) {
 						//LOG_DBG("note: %d, duration: %d", funkytown_song[i].note, funkytown_song[i].duration);
 						k_msleep(funkytown_song[i].duration);
 					}
-					
 				}
 				break;
 
 			case 2:
-				LOG_DBG("playing mario");
+				LOG_DBG("mario");
 				for (int i = 0; i< MARIO_NOTES;i++)
 				{
 					if (mario_song[i].note<10)
@@ -168,6 +177,23 @@ extern void buzzer_thread(void *d0, void *d1, void *d2) {
 					}
 				}
 				break;
+			case 3:
+				LOG_DBG("golioth");
+				for (int i = 0; i< GOLIOTH_NOTES;i++)
+				{
+					if (golioth_song[i].note<10)
+					{
+						// Low frequency notes represent a 'pause'
+						pwm_set_pulse_dt(&sBuzzer, 0);
+						k_msleep(golioth_song[i].duration);
+					}
+					else 
+					{
+						pwm_set_dt(&sBuzzer,PWM_HZ(golioth_song[i].note),PWM_HZ((golioth_song[i].note))/2);
+						k_msleep(golioth_song[i].duration);
+					}
+				}
+				break;
 			default:
 				LOG_WRN("invalid switch state");
 				break;
@@ -176,8 +202,7 @@ extern void buzzer_thread(void *d0, void *d1, void *d2) {
 		// turn buzzer off (pulse duty to 0)
 		pwm_set_pulse_dt(&sBuzzer, 0);
 
-		// Sleepy time!
-		//LOG_DBG("Putting song thread to sleep until woken");
+		// Sleep thread until awoken externally
 		k_sleep(K_FOREVER);
 	}
 }
@@ -212,6 +237,12 @@ void play_funkytown_once(void)
 void play_mario_once(void)
 {
 	song = mario;
+	k_wakeup(buzzer_tid);
+}
+
+void play_golioth_once(void)
+{
+	song = golioth;
 	k_wakeup(buzzer_tid);
 }
 

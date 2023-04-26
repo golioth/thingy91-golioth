@@ -102,7 +102,7 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 					uint32_t pins)
 {
 	LOG_DBG("Button pressed at %d", k_cycle_get_32());
-	play_mario_once();
+	play_beep_once();
 	k_wakeup(_system_thread);
 }
 

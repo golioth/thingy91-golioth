@@ -75,6 +75,51 @@ static enum golioth_rpc_status on_set_log_level(QCBORDecodeContext *request_para
 	return GOLIOTH_RPC_OK;
 }
 
+static enum golioth_rpc_status on_play_song(QCBORDecodeContext *request_params_array,
+					   QCBOREncodeContext *response_detail_map,
+					   void *callback_arg)
+{
+	UsefulBufC rpc_string;
+	double value;
+	QCBORError qerr;
+
+	QCBORDecode_GetTextString(request_params_array, &rpc_string);
+	qerr = QCBORDecode_GetError(request_params_array);
+	if (qerr != QCBOR_SUCCESS) {
+		LOG_ERR("Failed to decode array item: %d (%s)", qerr, qcbor_err_to_str(qerr));
+		return GOLIOTH_RPC_INVALID_ARGUMENT;
+	}
+
+	uint8_t cbor_len = (uint8_t)rpc_string.len+1;	/* Add room for a null terminator */
+	uint8_t sbuf[cbor_len];
+	snprintk(sbuf, cbor_len, "%s", (char *)rpc_string.ptr);
+	LOG_DBG("Received argument '%s' from 'play_song' RPC",sbuf);
+
+	if (strcmp(sbuf, "beep") == 0) 
+	{
+		play_beep_once();
+	}
+	else if (strcmp(sbuf, "funkytown") == 0) 
+	{
+		play_funkytown_once();
+	}
+	else if (strcmp(sbuf, "mario") == 0) 
+	{
+		play_mario_once();
+	}
+	else if (strcmp(sbuf, "golioth") == 0) 
+	{
+		play_golioth_once();
+	}
+	else 
+	{
+		LOG_ERR("'%s' is not an available song on your Thingy91",sbuf);
+		return GOLIOTH_RPC_INVALID_ARGUMENT;
+	}
+
+	return GOLIOTH_RPC_OK;
+}
+
 static enum golioth_rpc_status on_reboot(QCBORDecodeContext *request_params_array,
 					   QCBOREncodeContext *response_detail_map,
 					   void *callback_arg)
@@ -112,6 +157,9 @@ int app_register_rpc(struct golioth_client *rpc_client)
 	rpc_log_if_register_failure(err);
 
 	err = golioth_rpc_register(rpc_client, "set_log_level", on_set_log_level, NULL);
+	rpc_log_if_register_failure(err);
+
+	err = golioth_rpc_register(rpc_client, "play_song", on_play_song, NULL);
 	rpc_log_if_register_failure(err);
 
 	return err;
