@@ -23,6 +23,7 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 #endif
 
 #define FUNKYTOWN_NOTES 12
+#define MARIO_NOTES 37
 
 static struct golioth_client *client;
 
@@ -40,8 +41,8 @@ int freq = 880;
 enum song_choice
 	{
 		beep,
-		funky_town,
-		other_song	
+		funkytown,
+		mario	
 	};
 
 enum song_choice song = 0;
@@ -52,37 +53,62 @@ struct note_duration {
 };
 
 
-#define G4  392
-#define Ab4 415
-#define A4  440
-#define Bb4 466
-#define B4  494
-#define C5  523
-#define Db5 554
-#define D5  587
-#define Eb5 622
-#define E5  659
-#define F5  698
-#define Gb5 740
-#define G5  784
-#define Ab5 831
-#define REST 1
 
-
-struct note_duration funkytown[FUNKYTOWN_NOTES] = {
-    {.note = C5, .duration = 200},
-	{.note = C5, .duration = 200},
-    {.note = Bb4, .duration = 200},
-	{.note = C5, .duration = 200},
-	{.note = REST, .duration = 200},
-	{.note = G4, .duration = 200},
-	{.note = REST, .duration = 200},
-	{.note = G4, .duration = 200},
-	{.note = C5, .duration = 200},
-	{.note = F5, .duration = 200},
-	{.note = E5, .duration = 200},
-	{.note = C5, .duration = 200}
+struct note_duration funkytown_song[FUNKYTOWN_NOTES] = {
+    {.note = C5, .duration = quarter},
+	{.note = C5, .duration = quarter},
+    {.note = Bb4, .duration = quarter},
+	{.note = C5, .duration = quarter},
+	{.note = REST, .duration = quarter},
+	{.note = G4, .duration = quarter},
+	{.note = REST, .duration = quarter},
+	{.note = G4, .duration = quarter},
+	{.note = C5, .duration = quarter},
+	{.note = F5, .duration = quarter},
+	{.note = E5, .duration = quarter},
+	{.note = C5, .duration = quarter}
 };
+
+struct note_duration mario_song[MARIO_NOTES] = {
+    {.note = E6, .duration = quarter},
+	{.note = REST, .duration = eigth},
+	{.note = E6, .duration = quarter},
+	{.note = REST, .duration = quarter},
+    {.note = E6, .duration = quarter},
+	{.note = REST, .duration = quarter},
+	{.note = C6, .duration = quarter},
+	{.note = E6, .duration = half},
+	{.note = G6, .duration = half},
+	{.note = REST, .duration = quarter},
+	{.note = G4, .duration = half},
+	{.note = REST, .duration = whole},
+	//break in sound
+	{.note = C6, .duration = half},
+	{.note = REST, .duration = quarter},
+	{.note = G5, .duration = half},
+	{.note = REST, .duration = quarter},
+	{.note = E5, .duration = half},
+	{.note = REST, .duration = quarter},
+	{.note = A5, .duration = quarter},
+	{.note = REST, .duration = quarter},
+	{.note = B5, .duration = quarter},
+	{.note = REST, .duration = quarter},
+	{.note = Bb5, .duration = quarter},
+	{.note = A5, .duration = half},
+	{.note = G5, .duration = quarter},
+	{.note = E6, .duration = quarter},
+	{.note = G6, .duration = quarter},
+	{.note = A6, .duration = half},
+	{.note = F6, .duration = quarter},
+	{.note = G6, .duration = quarter},
+	{.note = REST, .duration = quarter},
+	{.note = E6, .duration = quarter},
+	{.note = REST, .duration = quarter},
+	{.note = C6, .duration = quarter},
+	{.note = D6, .duration = quarter},
+	{.note = B5, .duration = quarter}
+};
+
 
 
 /* Thread reads plays song on buzzer */
@@ -109,39 +135,39 @@ extern void buzzer_thread(void *d0, void *d1, void *d2) {
 				LOG_DBG("playing funky town");
 				for (int i = 0; i< FUNKYTOWN_NOTES;i++)
 				{
-					if (funkytown[i].note<10)
+					if (funkytown_song[i].note<10)
 					{
 						// Low frequency notes represent a 'pause'
 						pwm_set_pulse_dt(&sBuzzer, 0);
-						k_msleep(funkytown[i].duration);
+						k_msleep(funkytown_song[i].duration);
 					}
 					else 
 					{
-						pwm_set_dt(&sBuzzer,PWM_HZ(funkytown[i].note),PWM_HZ((funkytown[i].note))/2);
-						//LOG_DBG("note: %d, duration: %d", funkytown[i].note, funkytown[i].duration);
-						k_msleep(funkytown[i].duration);
+						pwm_set_dt(&sBuzzer,PWM_HZ(funkytown_song[i].note),PWM_HZ((funkytown_song[i].note))/2);
+						//LOG_DBG("note: %d, duration: %d", funkytown_song[i].note, funkytown_song[i].duration);
+						k_msleep(funkytown_song[i].duration);
 					}
 					
 				}
 				break;
 
-				// LOG_DBG("playing funky town");
-				// for (int i = 0; i< sizeof(test) / sizeof(test[0]);i++)
-				// {
-				// 	if (test[i]==0)
-				// 	{
-				// 		pwm_set_pulse_dt(&sBuzzer, 0);
-				// 		k_msleep(funkytown[test[i]].duration);
-				// 	}
-				// 	else 
-				// 	{
-				// 		pwm_set_dt(&sBuzzer,PWM_HZ(funkytown[test[i]].note),PWM_HZ((funkytown[test[i]].note))/2);
-				// 		LOG_DBG("note: %d, duration: %d", funkytown[test[i]].note, funkytown[test[i]].duration);
-				// 		k_msleep(funkytown[test[i]].duration);
-				// 	}
-					
-				// }
-				// break;
+			case 2:
+				LOG_DBG("playing mario");
+				for (int i = 0; i< MARIO_NOTES;i++)
+				{
+					if (mario_song[i].note<10)
+					{
+						// Low frequency notes represent a 'pause'
+						pwm_set_pulse_dt(&sBuzzer, 0);
+						k_msleep(mario_song[i].duration);
+					}
+					else 
+					{
+						pwm_set_dt(&sBuzzer,PWM_HZ(mario_song[i].note),PWM_HZ((mario_song[i].note))/2);
+						k_msleep(mario_song[i].duration);
+					}
+				}
+				break;
 			default:
 				LOG_WRN("invalid switch state");
 				break;
@@ -179,10 +205,15 @@ void play_beep_once(void)
 
 void play_funkytown_once(void)
 {
-	song = funky_town;
+	song = funkytown;
 	k_wakeup(buzzer_tid);
 }
 
+void play_mario_once(void)
+{
+	song = mario;
+	k_wakeup(buzzer_tid);
+}
 
 /* Set (unset) LED indicators for user action */
 void user_led_set(uint8_t state) {
