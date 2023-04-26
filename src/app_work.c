@@ -53,19 +53,33 @@ struct note_duration {
 
 int test[]={1,1,2,1,0,3,0,3,1,4,5,1};
 
+#define A  440
+#define Bb 466
+#define B  494
+#define C  523
+#define Db 554
+#define D  587
+#define Eb 622
+#define E  659
+#define F  698
+#define Gb 740
+#define G  784
+#define Ab 831
+#define REST 1
+
 
 struct note_duration funkytown[FUNKYTOWN_NOTES] = {
-    {.note = 75, .duration = 200},
-	{.note = 523, .duration = 200},
-    {.note = 466, .duration = 200},
-	{.note = 392, .duration = 200},
-	{.note = 698, .duration = 200},
-	{.note = 659, .duration = 200},
-	{.note = 740, .duration = 200},
-	{.note = 784, .duration = 200},
-	{.note = 831, .duration = 200},
-	{.note = 880, .duration = 200},
-	{.note = 932, .duration = 200}
+    {.note = A, .duration = 200},
+	{.note = A, .duration = 200},
+    {.note = Bb, .duration = 200},
+	{.note = A, .duration = 200},
+	{.note = REST, .duration = 200},
+	{.note = B, .duration = 200},
+	{.note = REST, .duration = 200},
+	{.note = B, .duration = 200},
+	{.note = A, .duration = 200},
+	{.note = C, .duration = 200},
+	{.note = Db, .duration = 200}
 };
 
 // struct note_duration funkytown[FUNKYTOWN_NOTES] = {
@@ -105,32 +119,42 @@ extern void buzzer_thread(void *d0, void *d1, void *d2) {
 				k_msleep(300);
 				break;
 			case 1:
-				// LOG_DBG("playing funky town");
-				// for (int i = 0; i<FUNKYTOWN_NOTES;i++)
-				// {
-				// 	pwm_set_dt(&sBuzzer,PWM_HZ(funkytown[i].note),PWM_HZ((funkytown[i].note))/2);
-				// 	LOG_DBG("note: %d, duration: %d", funkytown[i].note, funkytown[i].duration);
-				// 	k_msleep(funkytown[i].duration);
-				// }
-				// break;
-
 				LOG_DBG("playing funky town");
-				for (int i = 0; i< sizeof(test) / sizeof(test[0]);i++)
+				for (int i = 0; i< FUNKYTOWN_NOTES;i++)
 				{
-					if (test[i]==0)
+					if (funkytown[i].note<10)
 					{
+						// Low frequency notes represent a 'pause'
 						pwm_set_pulse_dt(&sBuzzer, 0);
-						k_msleep(funkytown[test[i]].duration);
+						k_msleep(funkytown[i].duration);
 					}
 					else 
 					{
-						pwm_set_dt(&sBuzzer,PWM_HZ(funkytown[test[i]].note),PWM_HZ((funkytown[test[i]].note))/2);
-						LOG_DBG("note: %d, duration: %d", funkytown[test[i]].note, funkytown[test[i]].duration);
-						k_msleep(funkytown[test[i]].duration);
+						pwm_set_dt(&sBuzzer,PWM_HZ(funkytown[i].note),PWM_HZ((funkytown[i].note))/2);
+						LOG_DBG("note: %d, duration: %d", funkytown[i].note, funkytown[i].duration);
+						k_msleep(funkytown[i].duration);
 					}
 					
 				}
 				break;
+
+				// LOG_DBG("playing funky town");
+				// for (int i = 0; i< sizeof(test) / sizeof(test[0]);i++)
+				// {
+				// 	if (test[i]==0)
+				// 	{
+				// 		pwm_set_pulse_dt(&sBuzzer, 0);
+				// 		k_msleep(funkytown[test[i]].duration);
+				// 	}
+				// 	else 
+				// 	{
+				// 		pwm_set_dt(&sBuzzer,PWM_HZ(funkytown[test[i]].note),PWM_HZ((funkytown[test[i]].note))/2);
+				// 		LOG_DBG("note: %d, duration: %d", funkytown[test[i]].note, funkytown[test[i]].duration);
+				// 		k_msleep(funkytown[test[i]].duration);
+				// 	}
+					
+				// }
+				// break;
 			default:
 				LOG_WRN("invalid switch state");
 				break;
