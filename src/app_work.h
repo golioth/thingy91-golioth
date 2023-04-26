@@ -22,6 +22,7 @@ typedef enum {
 	DN_COUNTER
 } slide_key;
 
+
 #define BUZZER_MAX_FREQ 2500
 #define BUZZER_MIN_FREQ 75
 
