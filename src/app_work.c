@@ -51,51 +51,38 @@ struct note_duration {
     int duration; // msec
 };
 
-int test[]={1,1,2,1,0,3,0,3,1,4,5,1};
 
-#define A  440
-#define Bb 466
-#define B  494
-#define C  523
-#define Db 554
-#define D  587
-#define Eb 622
-#define E  659
-#define F  698
-#define Gb 740
-#define G  784
-#define Ab 831
+#define G4  392
+#define Ab4 415
+#define A4  440
+#define Bb4 466
+#define B4  494
+#define C5  523
+#define Db5 554
+#define D5  587
+#define Eb5 622
+#define E5  659
+#define F5  698
+#define Gb5 740
+#define G5  784
+#define Ab5 831
 #define REST 1
 
 
 struct note_duration funkytown[FUNKYTOWN_NOTES] = {
-    {.note = A, .duration = 200},
-	{.note = A, .duration = 200},
-    {.note = Bb, .duration = 200},
-	{.note = A, .duration = 200},
+    {.note = C5, .duration = 200},
+	{.note = C5, .duration = 200},
+    {.note = Bb4, .duration = 200},
+	{.note = C5, .duration = 200},
 	{.note = REST, .duration = 200},
-	{.note = B, .duration = 200},
+	{.note = G4, .duration = 200},
 	{.note = REST, .duration = 200},
-	{.note = B, .duration = 200},
-	{.note = A, .duration = 200},
-	{.note = C, .duration = 200},
-	{.note = Db, .duration = 200}
+	{.note = G4, .duration = 200},
+	{.note = C5, .duration = 200},
+	{.note = F5, .duration = 200},
+	{.note = E5, .duration = 200},
+	{.note = C5, .duration = 200}
 };
-
-// struct note_duration funkytown[FUNKYTOWN_NOTES] = {
-//     {.note = 75, .duration = 500},
-// 	{.note = 554, .duration = 500},
-//     {.note = 587, .duration = 500},
-// 	{.note = 622, .duration = 500},
-// 	{.note = 659, .duration = 500},
-// 	{.note = 698, .duration = 500},
-// 	{.note = 740, .duration = 500},
-// 	{.note = 784, .duration = 500},
-// 	{.note = 831, .duration = 500},
-// 	{.note = 880, .duration = 500},
-// 	{.note = 932, .duration = 500}
-// };
-
 
 
 /* Thread reads plays song on buzzer */
@@ -131,7 +118,7 @@ extern void buzzer_thread(void *d0, void *d1, void *d2) {
 					else 
 					{
 						pwm_set_dt(&sBuzzer,PWM_HZ(funkytown[i].note),PWM_HZ((funkytown[i].note))/2);
-						LOG_DBG("note: %d, duration: %d", funkytown[i].note, funkytown[i].duration);
+						//LOG_DBG("note: %d, duration: %d", funkytown[i].note, funkytown[i].duration);
 						k_msleep(funkytown[i].duration);
 					}
 					
