@@ -1,10 +1,10 @@
-Golioth Reference Design Template
+Golioth Thingy91 Example Program
 #################################
 
 Overview
 ********
 
-This repository highlights various aspects of the Golioth platform on the Nordic Thingy91 platform.
+This repository highlights various aspects of the Golioth platform on the Nordic Thingy91 device.
 
 This repo is based off the private Golioth Reference Design Template (https://github.com/golioth/reference-design-template)
 
@@ -103,6 +103,15 @@ The following RPCs can be initiated in the Remote Procedure Call menu of the
    * ``2``: ``LOG_LEVEL_WRN``
    * ``3``: ``LOG_LEVEL_INF``
    * ``4``: ``LOG_LEVEL_DBG``
+
+``play_song``
+   This device can play different songs when the ``play_song`` RPC is sent with a corresponding parameters.
+
+  * ``beep``: Play a short 1 kHz tone. Also plays when button is pressed.
+  * ``funkytown``: Play the main tune from the 70s classic.
+  * ``mario``: Itsa me...a classic chiptune song!
+  * ``golioth``: A short theme for Golioth. Also plays on device boot.
+
 
 .. _Golioth Console: https://console.golioth.io
 .. _golioth-zephyr-boards: https://github.com/golioth/golioth-zephyr-boards
