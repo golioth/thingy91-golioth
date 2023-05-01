@@ -15,6 +15,7 @@ LOG_MODULE_REGISTER(app_rpc, LOG_LEVEL_DBG);
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/sys/reboot.h>
 
+#include "app_work.h"
 #include "app_rpc.h"
 
 static struct golioth_client *client;
@@ -80,7 +81,6 @@ static enum golioth_rpc_status on_play_song(QCBORDecodeContext *request_params_a
 					   void *callback_arg)
 {
 	UsefulBufC rpc_string;
-	double value;
 	QCBORError qerr;
 
 	QCBORDecode_GetTextString(request_params_array, &rpc_string);
@@ -114,6 +114,7 @@ static enum golioth_rpc_status on_play_song(QCBORDecodeContext *request_params_a
 	else 
 	{
 		LOG_ERR("'%s' is not an available song on your Thingy91",sbuf);
+		QCBOREncode_AddSZStringToMap(response_detail_map,"unknown song",sbuf);
 		return GOLIOTH_RPC_INVALID_ARGUMENT;
 	}
 

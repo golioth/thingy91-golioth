@@ -13,6 +13,7 @@ int app_buzzer_init(void);
 void play_funkytown_once(void);
 void play_mario_once(void);
 void play_beep_once(void);
+void play_golioth_once(void);
 
 /**
  * Each Ostentus slide needs a unique key. You may add additional slides by
