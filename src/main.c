@@ -62,7 +62,8 @@ static void golioth_on_connect(struct golioth_client *client)
 		k_sem_give(&dfu_status_update);
 
 		/* Indicate connection using LEDs */
-		golioth_connection_led_set(1);
+		// golioth_connection_led_set(1);
+		app_led_pwm_init();
 	}
 }
 
@@ -108,11 +109,15 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 
 /* Set (unset) LED indicators for active Golioth connection */
 void golioth_connection_led_set(uint8_t state) {
-	uint8_t pin_state = state ? 1 : 0;
+	// uint8_t pin_state = state ? 1 : 0;
 	/* Turn on Golioth logo LED once connected */
-	gpio_pin_set_dt(&golioth_led, pin_state);
-	/* Change the state of the Golioth LED on Ostentus */
-	led_golioth_set(pin_state);
+	// gpio_pin_set_dt(&golioth_led, pin_state);
+	// /* Change the state of the Golioth LED on Ostentus */
+	// led_golioth_set(pin_state);
+	// set_green_led_min_0_max_100(25);
+	// turn_on_and_update_all_led_pwms();
+	app_led_pwm_init(); // Once the connection is available, fire up the LED pwms
+
 }
 
 /* Set (unset) LED indicators for active internet connection */

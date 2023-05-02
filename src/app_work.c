@@ -15,7 +15,10 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 // #include <zephyr/drivers/led.h>
 
 #include "app_work.h"
+#include "app_settings.h"
 #include "libostentus/libostentus.h"
+
+#include <stdlib.h>
 
 #ifdef CONFIG_ALUDEL_BATTERY_MONITOR
 #include "battery_monitor/battery.h"
@@ -331,7 +334,7 @@ void app_work_sensor_read(void)
 	sensor_channel_get(weather, SENSOR_CHAN_GAS_RES, &gas_res);
 
 	LOG_DBG("T: %d.%06d; P: %d.%06d; H: %d.%06d; G: %d.%06d",
-			temp.val1, temp.val2, press.val1, press.val2,
+			temp.val1, abs(temp.val2), press.val1, press.val2,
 			humidity.val1, humidity.val2, gas_res.val1,
 			gas_res.val2);
 
@@ -350,7 +353,7 @@ void app_work_sensor_read(void)
 	// Format data for LightDB Stream
 
 	snprintk(json_buf, sizeof(json_buf), JSON_FMT,
-			 temp.val1, temp.val2,
+			 temp.val1, abs(temp.val2),
 			 press.val1, press.val2,
 			 humidity.val1, humidity.val2,
 			 gas_res.val1, gas_res.val2,
@@ -377,9 +380,9 @@ void app_work_sensor_read(void)
 
 	// play_funkytown_once();
 
-	user_led_set(1);
-	k_msleep(200);
-	user_led_set(0);
+	all_leds_off();
+	k_msleep(100);
+	all_leds_on();
 }
 
 void app_work_init(struct golioth_client *work_client)
