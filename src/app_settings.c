@@ -8,13 +8,139 @@
 LOG_MODULE_REGISTER(app_settings, LOG_LEVEL_DBG);
 
 #include <net/golioth/settings.h>
+#include <zephyr/drivers/pwm.h>
 #include "main.h"
 
+#include <zephyr/kernel.h>
+
 #include "app_settings.h"
+
+int period = 100000;  // should be 100 uSec
 
 static struct golioth_client *client;
 
 static int32_t _loop_delay_s = 60;
+
+static int32_t _red_intensity_pct = 50;
+static int32_t _green_intensity_pct = 50;
+static int32_t _blue_intensity_pct = 50;
+
+static int32_t _fade_speed_delay_ms = 50;
+
+static const struct pwm_dt_spec pwm_led0 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led0));
+static const struct pwm_dt_spec pwm_led1 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led1));
+static const struct pwm_dt_spec pwm_led2 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led2));
+
+// int turn_on_and_update_all_led_pwms(void)
+// {
+// 	int ret = 0;
+// 	long pulse_ns = 0;
+// 	pulse_ns = ( ( period * _red_intensity_pct ) / 100 );
+// 	LOG_DBG("Pulse on Red LED set to %d ns", (int)pulse_ns);
+// 	ret = pwm_set_dt(&pwm_led0, period, (int)pulse_ns);
+// 	if (ret) 
+// 	{
+// 			LOG_ERR("Error %d: failed to set red LED pulse width\n", ret);
+// 			return;
+// 	}
+
+// 	pulse_ns = ( ( period * _green_intensity_pct ) / 100 );
+// 	LOG_DBG("Pulse on Green LED set to %d ns", (int)pulse_ns);
+// 	ret = pwm_set_dt(&pwm_led1, period, (int)pulse_ns);
+// 	if (ret) 
+// 	{
+// 			LOG_ERR("Error %d: failed to set green LED pulse width\n", ret);
+// 			return;
+// 	}
+
+// 	pulse_ns = ( ( period * _blue_intensity_pct ) / 100 );
+// 	LOG_DBG("Pulse on Green LED set to %d ns", (int)pulse_ns);
+// 	ret = pwm_set_dt(&pwm_led2, period, (int)pulse_ns);
+// 	if (ret) 
+// 	{
+// 			LOG_ERR("Error %d: failed to set blue LED pulse width\n", ret);
+// 			return;
+// 	}
+
+// }
+
+K_SEM_DEFINE(led_pwm_initialized_sem, 0, 1); /* Wait until led pwm is ready */
+
+#define LED_PWM_STACK 4096
+
+static int led_on_off = 1;
+
+float intensity_steps[]={1.00,0.95,0.90,0.85,0.80,0.75,0.70,0.65,0.60,0.55,0.50,0.55,0.60,0.65,0.70,0.75,0.80,0.85,0.90,0.95};
+int array_size = sizeof(intensity_steps) / sizeof(float);
+
+int all_leds_on(void)
+{
+	led_on_off = 1;
+}
+
+int all_leds_off(void)
+{
+	led_on_off = 0;
+}
+
+extern void led_pwm_thread(void *d0, void *d1, void *d2)
+{
+	/* Block until buzzer is available */
+	k_sem_take(&led_pwm_initialized_sem, K_FOREVER);
+	while (1)
+	{
+		int ret = 0;
+		float pulse_ns = 0;
+		
+		for (int i=0;i<array_size;i++)
+		{
+			//LOG_DBG("intensity steps %f",intensity_steps[i]);
+			//LOG_DBG("led_on_off %d",led_on_off);
+			pulse_ns = ( ( (float)period * (float)_red_intensity_pct * intensity_steps[i] * (float)led_on_off) / 100 );
+			//LOG_DBG("Red LED duty %f",pulse_ns);
+			ret = pwm_set_dt(&pwm_led0, period, (int)pulse_ns);
+			pulse_ns = ( ( (float)period * (float)_green_intensity_pct * intensity_steps[i] * (float)led_on_off) / 100 );
+			//LOG_DBG("Green LED duty %f",pulse_ns);
+			ret = pwm_set_dt(&pwm_led1, period, (int)pulse_ns);
+			pulse_ns = ( ( (float)period * (float)_blue_intensity_pct * intensity_steps[i] * (float)led_on_off) / 100 );
+			//LOG_DBG("Blue LED duty %f",pulse_ns);
+			ret = pwm_set_dt(&pwm_led2, period, (int)pulse_ns);
+			// if (ret) 
+			// {
+			// 		LOG_ERR("Error %d: failed to set blue LED pulse width\n", ret);
+			// 		return;
+			// }
+			k_sleep(K_MSEC(_fade_speed_delay_ms));	// Sleep thread until next increment of pulsing effect
+		}	
+		
+	}
+}
+
+int app_led_pwm_init()
+{
+	// if (!device_is_ready(sBuzzer.dev))
+	// {
+	// 	return -ENODEV;
+	// }
+	LOG_DBG("turning on pwm leds");
+	k_sem_give(&led_pwm_initialized_sem);
+	return 0;
+}
+
+K_THREAD_DEFINE(led_pwm_tid, LED_PWM_STACK,
+				led_pwm_thread, NULL, NULL, NULL,
+				K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
+
+
+
+
+
+
+
+
+
+
+
 
 int32_t get_loop_delay_s(void)
 {
