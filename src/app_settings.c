@@ -31,38 +31,6 @@ static const struct pwm_dt_spec pwm_led0 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led0));
 static const struct pwm_dt_spec pwm_led1 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led1));
 static const struct pwm_dt_spec pwm_led2 = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led2));
 
-// int turn_on_and_update_all_led_pwms(void)
-// {
-// 	int ret = 0;
-// 	long pulse_ns = 0;
-// 	pulse_ns = ( ( period * _red_intensity_pct ) / 100 );
-// 	LOG_DBG("Pulse on Red LED set to %d ns", (int)pulse_ns);
-// 	ret = pwm_set_dt(&pwm_led0, period, (int)pulse_ns);
-// 	if (ret) 
-// 	{
-// 			LOG_ERR("Error %d: failed to set red LED pulse width\n", ret);
-// 			return;
-// 	}
-
-// 	pulse_ns = ( ( period * _green_intensity_pct ) / 100 );
-// 	LOG_DBG("Pulse on Green LED set to %d ns", (int)pulse_ns);
-// 	ret = pwm_set_dt(&pwm_led1, period, (int)pulse_ns);
-// 	if (ret) 
-// 	{
-// 			LOG_ERR("Error %d: failed to set green LED pulse width\n", ret);
-// 			return;
-// 	}
-
-// 	pulse_ns = ( ( period * _blue_intensity_pct ) / 100 );
-// 	LOG_DBG("Pulse on Green LED set to %d ns", (int)pulse_ns);
-// 	ret = pwm_set_dt(&pwm_led2, period, (int)pulse_ns);
-// 	if (ret) 
-// 	{
-// 			LOG_ERR("Error %d: failed to set blue LED pulse width\n", ret);
-// 			return;
-// 	}
-
-// }
 
 K_SEM_DEFINE(led_pwm_initialized_sem, 0, 1); /* Wait until led pwm is ready */
 
