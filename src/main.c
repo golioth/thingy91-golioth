@@ -16,7 +16,6 @@ LOG_MODULE_REGISTER(thingy91_golioth, LOG_LEVEL_DBG);
 #include "app_state.h"
 #include "app_work.h"
 #include "dfu/app_dfu.h"
-#include "libostentus/libostentus.h"
 
 #include <zephyr/drivers/gpio.h>
 
@@ -116,9 +115,7 @@ void golioth_connection_led_set(uint8_t state) {
 
 /* Set (unset) LED indicators for active internet connection */
 void network_led_set(uint8_t state) {
-	uint8_t pin_state = state ? 1 : 0;
-	/* Change the state of the Internet LED on Ostentus */
-	led_internet_set(pin_state);
+	/* Currently unused */
 }
 
 void main(void)
@@ -128,12 +125,6 @@ void main(void)
 	LOG_DBG("Start Reference Design Template sample");
 
 	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMAGE_VERSION);
-
-	/* Update Ostentus LEDS using bitmask (Power On and Battery)*/
-	led_bitmask(LED_POW | LED_BAT);
-
-	/* Show Golioth Logo on Ostentus ePaper screen */
-	show_splash();
 
 	/* Get system thread id so loop delay change event can wake main */
 	_system_thread = k_current_get();
@@ -210,18 +201,6 @@ void main(void)
 
 	gpio_init_callback(&button_cb_data, button_pressed, BIT(user_btn.pin));
 	gpio_add_callback(user_btn.port, &button_cb_data);
-
-	/* Set up a slideshow on Ostentus
-	 *  - add up to 256 slides
-	 *  - use the enum in app_work.h to add new keys
-	 *  - values are updated using these keys (see app_work.c)
-	 */
-	slide_add(UP_COUNTER, "Counter", strlen("Counter"));
-	slide_add(DN_COUNTER, "Anti-counter", strlen("Anti-counter"));
-	/* Set the title ofthe Ostentus summary slide (optional) */
-	summary_title("Counters:", strlen("Counters:"));
-	/* Start Ostentus slideshow with 30 second delay between slides */
-	slideshow(30000);
 
 	while (true) {
 		if (k_sem_take(&dfu_status_update, K_NO_WAIT) == 0) {

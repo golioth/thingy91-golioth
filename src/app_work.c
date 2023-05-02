@@ -16,7 +16,6 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 
 #include "app_work.h"
 #include "app_settings.h"
-#include "libostentus/libostentus.h"
 
 #include <stdlib.h>
 
@@ -264,8 +263,6 @@ void user_led_set(uint8_t state)
 	uint8_t pin_state = state ? 1 : 0;
 	/* Turn on Golioth logo LED once connected */
 	gpio_pin_set_dt(&user_led, pin_state);
-	/* Change the state of the Golioth LED on Ostentus */
-	led_user_set(pin_state);
 }
 
 /* Formatting string for sending sensor JSON to Golioth */
