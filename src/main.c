@@ -98,7 +98,9 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 					uint32_t pins)
 {
-	LOG_DBG("Button pressed at %d", k_cycle_get_32());
+	uint32_t button_kernel_time = k_cycle_get_32();
+	LOG_DBG("Button pressed at %d", button_kernel_time);
+
 	play_beep_once();
 	k_wakeup(_system_thread);
 }
@@ -205,6 +207,7 @@ void main(void)
 		}
 
 		app_work_sensor_read();
+		state_counter_change();
 
 		k_sleep(K_SECONDS(get_loop_delay_s()));
 
