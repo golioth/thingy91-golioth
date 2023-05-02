@@ -44,11 +44,13 @@ int array_size = sizeof(intensity_steps) / sizeof(float);
 void all_leds_on(void)
 {
 	led_on_off = 1;
+	LOG_DBG("LEDs on");
 }
 
 void all_leds_off(void)
 {
 	led_on_off = 0;
+	LOG_DBG("LEDs off");
 }
 
 extern void led_pwm_thread(void *d0, void *d1, void *d2)

@@ -310,6 +310,16 @@ void app_work_sensor_read(void)
 	/* Log battery levels if possible */
 	IF_ENABLED(CONFIG_ALUDEL_BATTERY_MONITOR, (log_battery_info();));
 
+	/* Turn off LED so light sensor won't detect LED fade
+	   Also helps highlight that there is a reading being taken.
+	*/
+	all_leds_off();
+
+	// briefly sleep the thread to give time to run the LED thread
+	k_msleep(300); 
+
+	// Start taking readings
+
 	// BH1749
 
 	err = sensor_sample_fetch_chan(light, SENSOR_CHAN_ALL);
@@ -380,8 +390,7 @@ void app_work_sensor_read(void)
 
 	// play_funkytown_once();
 
-	all_leds_off();
-	k_msleep(100);
+	
 	all_leds_on();
 }
 
