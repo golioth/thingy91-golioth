@@ -55,10 +55,7 @@ static void golioth_on_connect(struct golioth_client *client)
 		initial_connection = false;
 
 		/* Report current DFU version to Golioth */
-		//FIXME: we can't call this here because it's sync (deadlock)
- 		//app_dfu_report_state_to_golioth();
-		//This semaphore is a workaround
-		k_sem_give(&dfu_status_update);
+		app_dfu_report_state_to_golioth();
 
 		/* Indicate connection using LEDs */
 		// golioth_connection_led_set(1);

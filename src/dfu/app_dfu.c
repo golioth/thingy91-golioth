@@ -229,12 +229,23 @@ void app_dfu_observe(void) {
 	}
 }
 
+static int app_dfu_async_error_handler(struct golioth_req_rsp *rsp)
+{
+	if (rsp->err)
+	{
+		LOG_ERR("Async firmware report failed: %d", rsp->err);
+		return rsp->err;
+	}
+	return 0;
+}
+
 void app_dfu_report_state_to_golioth(void) {
-	int err = golioth_fw_report_state(client, "main",
-				      current_version_str,
-				      NULL,
-				      GOLIOTH_FW_STATE_IDLE,
-				      dfu_initial_result);
+	int err = golioth_fw_report_state_cb(client, "main",
+				             current_version_str,
+				             NULL,
+				             GOLIOTH_FW_STATE_IDLE,
+				             dfu_initial_result,
+				             app_dfu_async_error_handler, NULL);
 	if (err) {
 		LOG_ERR("Failed to report firmware state: %d", err);
 	}
