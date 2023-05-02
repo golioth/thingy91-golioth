@@ -125,7 +125,7 @@ void main(void)
 {
 	int err;
 
-	LOG_DBG("Start Reference Design Template sample");
+	LOG_DBG("Start Thingy91 Golioth sample");
 
 	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMAGE_VERSION);
 

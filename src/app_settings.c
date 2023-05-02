@@ -44,13 +44,13 @@ int array_size = sizeof(intensity_steps) / sizeof(float);
 void all_leds_on(void)
 {
 	led_on_off = 1;
-	LOG_DBG("LEDs on");
+	// LOG_DBG("LEDs on");
 }
 
 void all_leds_off(void)
 {
 	led_on_off = 0;
-	LOG_DBG("LEDs off");
+	// LOG_DBG("LEDs off");
 }
 
 extern void led_pwm_thread(void *d0, void *d1, void *d2)
@@ -88,10 +88,7 @@ extern void led_pwm_thread(void *d0, void *d1, void *d2)
 
 int app_led_pwm_init()
 {
-	// if (!device_is_ready(sBuzzer.dev))
-	// {
-	// 	return -ENODEV;
-	// }
+
 	LOG_DBG("turning on pwm leds");
 	k_sem_give(&led_pwm_initialized_sem);
 	return 0;

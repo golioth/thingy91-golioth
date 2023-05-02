@@ -111,27 +111,18 @@ struct note_duration mario_song[MARIO_NOTES] = {
 	{.note = B5, .duration = quarter}};
 
 struct note_duration golioth_song[] = {
-	{.note = C6, .duration = whole},
-	{.note = REST, .duration = sixteenth},
-	{.note = Bb5, .duration = quarter},
-	{.note = A5, .duration = 200},
-	{.note = G5, .duration = quarter},
-	{.note = F5, .duration = 200},
-	{.note = Eb5, .duration = quarter},
-	{.note = E5, .duration = 350},
-	{.note = C5, .duration = whole},
-	{.note = REST, .duration = sixteenth},
-	{.note = Bb5, .duration = 30},
-	{.note = Bb5+12, .duration = 30},
-	{.note = Bb5+24, .duration = 30},
-	{.note = Bb5+36, .duration = 30},
-	{.note = Bb5+48, .duration = 30},
-	{.note = Bb5+60, .duration = 20},
-	{.note = Bb5+72, .duration = 20},
-	{.note = Bb5+84, .duration = 20},
-	{.note = Bb5+96, .duration = 20},
-	{.note = Bb5+108, .duration = 20},
-	{.note = C6, .duration = whole}
+	{.note = C6, .duration = quarter},
+	{.note = REST, .duration = 100},
+	{.note = G5, .duration = 100},
+	{.note = A5, .duration = 100},
+	{.note = Bb5, .duration = 100},
+	{.note = REST, .duration = 100},
+	{.note = Bb5, .duration = 100},
+	{.note = REST, .duration = quarter},
+	{.note = C5, .duration = half},
+	{.note = REST, .duration = half},
+	{.note = REST, .duration = quarter},
+	{.note = C6, .duration = quarter}
 };
 
 /* Thread plays song on buzzer */
