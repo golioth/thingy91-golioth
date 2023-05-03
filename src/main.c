@@ -32,6 +32,7 @@ static const struct gpio_dt_spec user_btn = GPIO_DT_SPEC_GET(
 		DT_ALIAS(sw1), gpios);
 static struct gpio_callback button_cb_data;
 
+
 /* forward declarations */
 void golioth_connection_led_set(uint8_t state);
 void network_led_set(uint8_t state);
@@ -124,6 +125,26 @@ void main(void)
 	LOG_DBG("Start Thingy91 Golioth sample");
 
 	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMAGE_VERSION);
+
+
+	// Start DFU code for updatable image
+
+	#define LED0_NODE DT_ALIAS(led0)
+	static const struct gpio_dt_spec led_red = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+
+	for (int i=0;i<3;i++)
+	{
+		gpio_pin_set_dt(&led_red, 1);
+		k_sleep(K_MSEC(500));
+		gpio_pin_set_dt(&led_red, 0);
+		k_sleep(K_MSEC(500));
+	}
+
+	LOG_INF("===========================");
+	LOG_INF("====OTA VERSION SUCCESS====");
+	LOG_INF("===========================");
+
+	// End DFU code for updatable image
 
 	/* Get system thread id so loop delay change event can wake main */
 	_system_thread = k_current_get();
