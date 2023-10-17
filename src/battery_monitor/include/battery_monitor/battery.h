@@ -48,25 +48,69 @@ struct battery_level_point {
  * @return the estimated remaining capacity in parts per ten
  * thousand.
  */
-unsigned int battery_level_pptt(unsigned int batt_mV,
-				const struct battery_level_point *curve);
+unsigned int battery_level_pptt(unsigned int batt_mV, const struct battery_level_point *curve);
+
+/** A battery voltage and level measurement.
+ *
+ * Battery voltage is in mV.
+ * Battery level is in parts per ten thousand.
+ */
+struct battery_data {
+	int battery_voltage_mv;
+	unsigned int battery_level_pptt;
+};
 
 /**
- * @brief Read the battery voltage and estimated level
+ * @brief Get pointer to a string representation of the last read battery
+ * voltage.
  *
- * @param batt_v measured battery voltage
+ * This string is generated each time read_and_report_battery() is called.
  *
- * @param batt_lvl remaining battery level
+ * @return Pointer to character array
+ */
+char *get_batt_v_str(void);
+
+/**
+ * @brief Get pointer to a string representation of the last read percentage
+ * level. If a level has not yet been read, this value will be `none`.
+ *
+ * This string is generated each time read_and_report_battery() is called.
+ *
+ * @return Pointer to character array
+ */
+char *get_batt_lvl_str(void);
+
+/**
+ * @brief Read the battery voltage and estimated level.
+ *
+ * @param battery_data pointer to a struct to read the battery data into.
+ *
+ * @return Error number or zero if successful.
+ */
+int read_battery_data(struct battery_data *batt_data);
+
+/**
+ * @brief Log the battery voltage and estimated level.
+ *
+ * @param battery_data battery data to log.
+ *
+ */
+void log_battery_data(void);
+
+/**
+ * @brief Stream battery data to Golioth.
+ *
+ * @param battery_data battery data to stream to Golioth.
  *
  * @return Error number or zero if successful
  */
-int read_battery_info(struct sensor_value *batt_v, struct sensor_value *batt_lvl);
+int stream_battery_data(struct battery_data *batt_data);
 
 /**
- * @brief Log the battery voltage and estimated level
+ * @brief Read, log, stream, and display a battery measurement.
  *
  * @return Error number or zero if successful
  */
-int log_battery_info(void);
+int read_and_report_battery(void);
 
 #endif /* APPLICATION_BATTERY_H_ */

@@ -1,10 +1,13 @@
+# Copyright (c) 2023 Golioth, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
 manifest:
-  version: 0.7
+  version: 0.8
 
   projects:
     - name: golioth
       path: modules/lib/golioth
-      revision: 94265de33821b8046ef37fad0fb627b977e86b4f
+      revision: v0.7.1
       url: https://github.com/golioth/golioth-zephyr-sdk
       west-commands: scripts/west-commands.yml
       import:
@@ -20,11 +23,22 @@ manifest:
           - mcuboot
           - net-tools
           - nrfxlib
-          - tfm-mcuboot
-          - trusted-firmware-m
           - qcbor
           - segger
+          - tfm-mcuboot
           - tinycrypt
+          - trusted-firmware-m
+          - zcbor
+
+    - name: golioth-zephyr-boards
+      path: deps/modules/lib/golioth-boards
+      revision: v1.0.0
+      url: git@github.com:golioth/golioth-zephyr-boards.git
+
+    - name: zephyr-network-info
+      path: deps/modules/lib/network-info
+      revision: v1.0.1
+      url: https://github.com/golioth/zephyr-network-info
 
   self:
     path: app

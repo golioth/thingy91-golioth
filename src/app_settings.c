@@ -44,45 +44,31 @@ int array_size = sizeof(intensity_steps) / sizeof(float);
 void all_leds_on(void)
 {
 	led_on_off = 1;
-	// LOG_DBG("LEDs on");
 }
 
 void all_leds_off(void)
 {
 	led_on_off = 0;
-	// LOG_DBG("LEDs off");
 }
 
 extern void led_pwm_thread(void *d0, void *d1, void *d2)
 {
 	/* Block until buzzer is available */
 	k_sem_take(&led_pwm_initialized_sem, K_FOREVER);
-	while (1)
-	{
+	while (1) {
 		int ret = 0;
 		float pulse_ns = 0;
 		
 		for (int i=0;i<array_size;i++)
 		{
-			//LOG_DBG("intensity steps %f",intensity_steps[i]);
-			//LOG_DBG("led_on_off %d",led_on_off);
 			pulse_ns = ( ( (float)period * (float)_red_intensity_pct * intensity_steps[i] * (float)led_on_off) / 100 );
-			//LOG_DBG("Red LED duty %f",pulse_ns);
 			ret = pwm_set_dt(&pwm_led0, period, (int)pulse_ns);
 			pulse_ns = ( ( (float)period * (float)_green_intensity_pct * intensity_steps[i] * (float)led_on_off) / 100 );
-			//LOG_DBG("Green LED duty %f",pulse_ns);
 			ret = pwm_set_dt(&pwm_led1, period, (int)pulse_ns);
 			pulse_ns = ( ( (float)period * (float)_blue_intensity_pct * intensity_steps[i] * (float)led_on_off) / 100 );
-			//LOG_DBG("Blue LED duty %f",pulse_ns);
 			ret = pwm_set_dt(&pwm_led2, period, (int)pulse_ns);
-			// if (ret) 
-			// {
-			// 		LOG_ERR("Error %d: failed to set blue LED pulse width\n", ret);
-			// 		return;
-			// }
 			k_sleep(K_MSEC(_led_fade_speed_ms/array_size));	// Sleep thread until next increment of pulsing effect
-		}	
-		
+		}
 	}
 }
 
@@ -95,20 +81,15 @@ int app_led_pwm_init()
 }
 
 K_THREAD_DEFINE(led_pwm_tid, LED_PWM_STACK,
-				led_pwm_thread, NULL, NULL, NULL,
-				K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
-
-
-
+		led_pwm_thread, NULL, NULL, NULL,
+		K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
 
 int32_t get_loop_delay_s(void)
 {
 	return _loop_delay_s;
 }
 
-enum golioth_settings_status on_setting(
-		const char *key,
-		const struct golioth_settings_value *value)
+enum golioth_settings_status on_setting(const char *key, const struct golioth_settings_value *value)
 {
 
 	LOG_DBG("Received setting: key = %s, type = %d", key, value->type);
@@ -154,12 +135,12 @@ enum golioth_settings_status on_setting(
 		/* Only update if value has changed */
 		if (_led_fade_speed_ms == (int32_t)value->i64) {
 			LOG_DBG("Received LED_FADE_SPEED_MS already matches local value.");
-		} 
+		}
 		
 		else {
 			_led_fade_speed_ms = (int32_t)value->i64;
 			LOG_INF("Set LED fade speed to %d milliseconds", _led_fade_speed_ms);
-			//not waking system thread here, since the LED update thread is looping 
+			/* not waking system thread here, since the LED update thread is looping */
 		}
 		return GOLIOTH_SETTINGS_SUCCESS;
 	}
@@ -180,11 +161,11 @@ enum golioth_settings_status on_setting(
 		/* Only update if value has changed */
 		if (_red_intensity_pct == (int32_t)value->i64) {
 			LOG_DBG("Received RED_INTENSITY_PCT already matches local value.");
-		} 
+		}
 		else {
 			_red_intensity_pct = (int32_t)value->i64;
 			LOG_INF("Set red intensity to %d percent", _red_intensity_pct);
-			//not waking system thread here, since the LED update thread is looping 
+			/* not waking system thread here, since the LED update thread is looping */
 		}
 		return GOLIOTH_SETTINGS_SUCCESS;
 	}
@@ -207,11 +188,11 @@ enum golioth_settings_status on_setting(
 		/* Only update if value has changed */
 		if (_green_intensity_pct == (int32_t)value->i64) {
 			LOG_DBG("Received GREEN_INTENSITY_PCT already matches local value.");
-		} 
+		}
 		else {
 			_green_intensity_pct = (int32_t)value->i64;
 			LOG_INF("Set green intensity to %d percent", _green_intensity_pct);
-			//not waking system thread here, since the LED update thread is looping 
+			/* not waking system thread here, since the LED update thread is looping */
 		}
 		return GOLIOTH_SETTINGS_SUCCESS;
 	}
@@ -232,11 +213,11 @@ enum golioth_settings_status on_setting(
 		/* Only update if value has changed */
 		if (_blue_intensity_pct == (int32_t)value->i64) {
 			LOG_DBG("Received BLUE_INTENSITY_PCT already matches local value.");
-		} 
+		}
 		else {
 			_blue_intensity_pct = (int32_t)value->i64;
 			LOG_INF("Set blue intensity to %d percent", _blue_intensity_pct);
-			//not waking system thread here, since the LED update thread is looping 
+			/* not waking system thread here, since the LED update thread is looping */
 		}
 		return GOLIOTH_SETTINGS_SUCCESS;
 	}
@@ -245,20 +226,23 @@ enum golioth_settings_status on_setting(
 	return GOLIOTH_SETTINGS_KEY_NOT_RECOGNIZED;
 }
 
-void app_settings_init(struct golioth_client *state_client)
+int app_settings_init(struct golioth_client *state_client)
 {
 	client = state_client;
-	app_register_settings(client);
+	int err = app_settings_register(client);
+	return err;
 }
 
-void app_settings_observe(void) {
+int app_settings_observe(void)
+{
 	int err = golioth_settings_observe(client);
 	if (err) {
 		LOG_ERR("Failed to observe settings: %d", err);
 	}
+	return err;
 }
 
-int app_register_settings(struct golioth_client *settings_client)
+int app_settings_register(struct golioth_client *settings_client)
 {
 	int err = golioth_settings_register_callback(settings_client, on_setting);
 

@@ -14,15 +14,21 @@
 #include <zephyr/init.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/adc.h>
-#include <zephyr/drivers/sensor.h>
 #include <zephyr/logging/log.h>
+#include <net/golioth/system_client.h>
 
 #include "battery_monitor/battery.h"
+#include "../app_work.h"
 
-LOG_MODULE_REGISTER(battery, CONFIG_ADC_LOG_LEVEL);
+LOG_MODULE_REGISTER(battery, LOG_LEVEL_DBG);
 
-#define VBATT DT_PATH(vbatt)
+#define VBATT	    DT_PATH(vbatt)
 #define ZEPHYR_USER DT_PATH(zephyr_user)
+
+/* Formatting string for sending battery JSON to Golioth */
+#define JSON_FMT "{\"batt_v\":%d.%03d,\"batt_lvl\":%d.%02d}"
+
+#define LABEL_BATTERY "Battery"
 
 #ifdef CONFIG_BOARD_THINGY52_NRF52832
 /* This board uses a divider that reduces max voltage to
@@ -35,6 +41,12 @@ LOG_MODULE_REGISTER(battery, CONFIG_ADC_LOG_LEVEL);
  */
 #define BATTERY_ADC_GAIN ADC_GAIN_1_6
 #endif
+
+static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
+char stream_endpoint[] = "battery";
+
+char _batt_v_str[8] = "0.0 V";
+char _batt_lvl_str[5] = "none";
 
 /* Battery values specific to the Aludel-mini */
 static const struct battery_level_point batt_levels[] = {
@@ -50,9 +62,9 @@ static const struct battery_level_point batt_levels[] = {
 	 * and 3.1 V.
 	 */
 
-	{ 10000, 3950 },
-	{ 625, 3550 },
-	{ 0, 3100 },
+	{10000, 3950},
+	{625, 3550},
+	{0, 3100},
 };
 
 struct io_channel_config {
@@ -72,16 +84,18 @@ struct divider_config {
 
 static const struct divider_config divider_config = {
 #if DT_NODE_HAS_STATUS(VBATT, okay)
+	/* clang-format off */
 	.io_channel = {
 		DT_IO_CHANNELS_INPUT(VBATT),
-	},
+	}, /* clang-format on */
 	.power_gpios = GPIO_DT_SPEC_GET_OR(VBATT, power_gpios, {}),
 	.output_ohm = DT_PROP(VBATT, output_ohms),
 	.full_ohm = DT_PROP(VBATT, full_ohms),
-#else /* /vbatt exists */
+#else  /* /vbatt exists */
+	/* clang-format off */
 	.io_channel = {
 		DT_IO_CHANNELS_INPUT(ZEPHYR_USER),
-	},
+	}, /* clang-format on */
 #endif /* /vbatt exists */
 };
 
@@ -121,8 +135,7 @@ static int divider_setup(void)
 		}
 		rc = gpio_pin_configure_dt(gcp, GPIO_OUTPUT_INACTIVE);
 		if (rc != 0) {
-			LOG_ERR("Failed to control feed %s.%u: %d",
-				gcp->port->name, gcp->pin, rc);
+			LOG_ERR("Failed to control feed %s.%u: %d", gcp->port->name, gcp->pin, rc);
 			return rc;
 		}
 	}
@@ -143,8 +156,7 @@ static int divider_setup(void)
 	};
 
 	if (cfg->output_ohm != 0) {
-		accp->input_positive = SAADC_CH_PSELP_PSELP_AnalogInput0
-			+ iocp->channel;
+		accp->input_positive = SAADC_CH_PSELP_PSELP_AnalogInput0 + iocp->channel;
 	} else {
 		accp->input_positive = SAADC_CH_PSELP_PSELP_VDD;
 	}
@@ -166,7 +178,7 @@ static int divider_setup(void)
 
 static bool battery_ok;
 
-static int battery_setup(const struct device *arg)
+static int battery_setup(void)
 {
 	LOG_INF("Initializing battery measurement");
 
@@ -211,19 +223,15 @@ int battery_sample(void)
 		if (rc == 0) {
 			int32_t val = ddp->raw;
 
-			adc_raw_to_millivolts(adc_ref_internal(ddp->adc),
-					      ddp->adc_cfg.gain,
-					      sp->resolution,
-					      &val);
+			adc_raw_to_millivolts(adc_ref_internal(ddp->adc), ddp->adc_cfg.gain,
+					      sp->resolution, &val);
 
 			if (dcp->output_ohm != 0) {
-				rc = val * (uint64_t)dcp->full_ohm
-					/ dcp->output_ohm;
-				LOG_DBG("raw %u ~ %u mV => %d mV\n",
-					ddp->raw, val, rc);
+				rc = val * (uint64_t)dcp->full_ohm / dcp->output_ohm;
+				LOG_DBG("raw %u ~ %u mV => %d mV", ddp->raw, val, rc);
 			} else {
 				rc = val;
-				LOG_DBG("raw %u ~ %u mV\n", ddp->raw, val);
+				LOG_DBG("raw %u ~ %u mV", ddp->raw, val);
 			}
 		}
 	}
@@ -231,8 +239,7 @@ int battery_sample(void)
 	return rc;
 }
 
-unsigned int battery_level_pptt(unsigned int batt_mV,
-				const struct battery_level_point *curve)
+unsigned int battery_level_pptt(unsigned int batt_mV, const struct battery_level_point *curve)
 {
 	const struct battery_level_point *pb = curve;
 
@@ -241,8 +248,7 @@ unsigned int battery_level_pptt(unsigned int batt_mV,
 		return pb->lvl_pptt;
 	}
 	/* Go down to the last point at or below the measured voltage. */
-	while ((pb->lvl_pptt > 0)
-	       && (batt_mV < pb->lvl_mV)) {
+	while ((pb->lvl_pptt > 0) && (batt_mV < pb->lvl_mV)) {
 		++pb;
 	}
 	if (batt_mV < pb->lvl_mV) {
@@ -253,14 +259,11 @@ unsigned int battery_level_pptt(unsigned int batt_mV,
 	/* Linear interpolation between below and above points. */
 	const struct battery_level_point *pa = pb - 1;
 
-	return pb->lvl_pptt
-	       + ((pa->lvl_pptt - pb->lvl_pptt)
-		  * (batt_mV - pb->lvl_mV)
-		  / (pa->lvl_mV - pb->lvl_mV));
+	return pb->lvl_pptt +
+	       ((pa->lvl_pptt - pb->lvl_pptt) * (batt_mV - pb->lvl_mV) / (pa->lvl_mV - pb->lvl_mV));
 }
 
-
-int read_battery_info(struct sensor_value *batt_v, struct sensor_value *batt_lvl)
+int read_battery_data(struct battery_data *batt_data)
 {
 
 	/* Turn on the voltage divider circuit */
@@ -272,11 +275,11 @@ int read_battery_info(struct sensor_value *batt_v, struct sensor_value *batt_lvl
 	}
 
 	/* Read the battery voltage */
-	int batt_mV = battery_sample();
+	int batt_mv = battery_sample();
 
-	if (batt_mV < 0) {
-		LOG_ERR("Failed to read battery voltage: %d", batt_mV);
-		return err;
+	if (batt_mv < 0) {
+		LOG_ERR("Failed to read battery voltage: %d", batt_mv);
+		return batt_mv;
 	}
 
 	/* Turn off the voltage divider circuit */
@@ -286,25 +289,71 @@ int read_battery_info(struct sensor_value *batt_v, struct sensor_value *batt_lvl
 		return err;
 	}
 
-	sensor_value_from_double(batt_v, batt_mV / 1000.0);
-	sensor_value_from_double(batt_lvl, battery_level_pptt(batt_mV,
-		batt_levels) / 100.0);
+	batt_data->battery_voltage_mv = batt_mv;
+	batt_data->battery_level_pptt = battery_level_pptt(batt_mv, batt_levels);
 
 	return 0;
 }
 
-int log_battery_info(void)
+char *get_batt_v_str(void)
+{
+	return _batt_v_str;
+}
+
+char *get_batt_lvl_str(void)
+{
+	return _batt_lvl_str;
+}
+
+void log_battery_data(void)
+{
+	LOG_INF("Battery measurement: voltage=%s, level=%s", get_batt_v_str(), get_batt_lvl_str());
+}
+
+int stream_battery_data(struct battery_data *batt_data)
 {
 	int err;
-	struct sensor_value batt_v = {0, 0};
-	struct sensor_value batt_lvl = {0, 0};
+	/* {"batt_v":X.XXX,"batt_lvl":XXX.XX} */
+	char json_buf[35];
 
-	err = read_battery_info(&batt_v, &batt_lvl);
-	if (err)
+	/* Send battery data to Golioth */
+	snprintk(json_buf, sizeof(json_buf), JSON_FMT, batt_data->battery_voltage_mv / 1000,
+		 batt_data->battery_voltage_mv % 1000, batt_data->battery_level_pptt / 100,
+		 batt_data->battery_level_pptt % 100);
+	LOG_DBG("%s", json_buf);
+
+	err = golioth_stream_push(client, stream_endpoint, GOLIOTH_CONTENT_FORMAT_APP_JSON,
+				  json_buf, strlen(json_buf));
+	if (err) {
+		LOG_ERR("Failed to send battery data to Golioth: %d", err);
+	}
+
+	return 0;
+}
+
+int read_and_report_battery(void)
+{
+	int err;
+	struct battery_data batt_data;
+
+	err = read_battery_data(&batt_data);
+	if (err) {
+		LOG_ERR("Error reading battery data");
 		return err;
+	}
 
-	LOG_INF("Battery measurement: voltage=%d.%d V, level=%d.%d",
-		batt_v.val1, batt_v.val2, batt_lvl.val1, batt_lvl.val2);
+	/* Format as global string for easy access */
+	snprintk(_batt_v_str, sizeof(_batt_v_str), "%d.%03d V", batt_data.battery_voltage_mv / 1000,
+		 batt_data.battery_voltage_mv % 1000);
+	snprintk(_batt_lvl_str, sizeof(_batt_lvl_str), "%d%%", batt_data.battery_level_pptt / 100);
+
+	log_battery_data();
+
+	err = stream_battery_data(&batt_data);
+	if (err) {
+		LOG_ERR("Error streaming battery info");
+		return err;
+	}
 
 	return 0;
 }

@@ -14,8 +14,8 @@
 #define APP_STATE_BUTTON_ENDP  "button"
 
 void app_state_init(struct golioth_client *state_client);
-void app_state_observe(void);
-void app_state_update_actual(void);
+int app_state_observe(void);
+int app_state_update_actual(void);
 
 void state_counter_change(void);
 
