@@ -56,7 +56,7 @@ functionality on this Reference Design.
 
 .. code-block:: text
 
-   $ (.venv) west build -b thingy91_nrf9160_ns app -- -DCONFIG_MCUBOOT_IMAGE_VERSION=\"<your.semantic.version>\"
+   $ (.venv) west build -b thingy91_nrf9160_ns app -- -DCONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION=\"<your.semantic.version>\"
    $ (.venv) west flash
 
 Configure PSK-ID and PSK using the device shell based on your Golioth
