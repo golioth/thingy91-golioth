@@ -107,9 +107,6 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 			LOG_INF("Network: Registered (roaming)");
 			process_lte_connected();
 			break;
-		case LTE_LC_NW_REG_REGISTERED_EMERGENCY:
-			LOG_INF("Network: Registered (emergency)");
-			break;
 		case LTE_LC_NW_REG_UICC_FAIL:
 			LOG_INF("Network: UICC fail");
 			break;
@@ -170,7 +167,7 @@ int main(void)
 
 	LOG_DBG("Start Thingy91 Golioth sample");
 
-	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMAGE_VERSION);
+	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 	IF_ENABLED(CONFIG_MODEM_INFO, (log_modem_firmware_version();));
 
 	/* Get system thread id so loop delay change event can wake main */

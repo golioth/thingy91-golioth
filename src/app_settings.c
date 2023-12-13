@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Golioth, Inc.
+ * Copyright (c) 2022-2023 Golioth, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -58,7 +58,7 @@ extern void led_pwm_thread(void *d0, void *d1, void *d2)
 	while (1) {
 		int ret = 0;
 		float pulse_ns = 0;
-		
+
 		for (int i=0;i<array_size;i++)
 		{
 			pulse_ns = ( ( (float)period * (float)_red_intensity_pct * intensity_steps[i] * (float)led_on_off) / 100 );
@@ -136,7 +136,7 @@ enum golioth_settings_status on_setting(const char *key, const struct golioth_se
 		if (_led_fade_speed_ms == (int32_t)value->i64) {
 			LOG_DBG("Received LED_FADE_SPEED_MS already matches local value.");
 		}
-		
+
 		else {
 			_led_fade_speed_ms = (int32_t)value->i64;
 			LOG_INF("Set LED fade speed to %d milliseconds", _led_fade_speed_ms);
