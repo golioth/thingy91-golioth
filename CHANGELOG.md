@@ -14,6 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Merge changes from [`golioth/reference-design-template@template_v1.2.0`](https://github.com/golioth/reference-design-template/tree/template_v1.2.0).
 - Add a `CHANGELOG.md` to track changes moving forward.
 
+### Removed
+
+- Remove unsupported board overlays.
+
 ## [1.0.0] - 2023-05-02
 
 This is the first release of the `thingy91-golioth` repo.
