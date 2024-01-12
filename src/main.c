@@ -17,10 +17,6 @@ LOG_MODULE_REGISTER(thingy91_golioth, LOG_LEVEL_DBG);
 #include "app_work.h"
 #include "dfu/app_dfu.h"
 
-#ifdef CONFIG_ALUDEL_BATTERY_MONITOR
-#include "battery_monitor/battery.h"
-#endif
-
 #include <zephyr/drivers/gpio.h>
 
 #ifdef CONFIG_MODEM_INFO
