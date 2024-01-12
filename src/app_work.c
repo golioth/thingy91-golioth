@@ -7,6 +7,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 
+#include <stdlib.h>
 #include <net/golioth/system_client.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
@@ -15,8 +16,6 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 
 #include "app_work.h"
 #include "app_settings.h"
-
-#include <stdlib.h>
 
 #define FUNKYTOWN_NOTES 13
 #define MARIO_NOTES 37
@@ -253,7 +252,7 @@ static int async_error_handler(struct golioth_req_rsp *rsp)
 	return 0;
 }
 
-/* This will be called by the main() loop after delays or on button presses*/
+/* This will be called by the main() loop after delays or on button presses */
 /* Do all of your work here! */
 void app_work_sensor_read(void)
 {
@@ -275,8 +274,8 @@ void app_work_sensor_read(void)
 	struct sensor_value accel_z;
 
 	/* Turn off LED so light sensor won't detect LED fade
-	   Also helps highlight that there is a reading being taken.
-	*/
+	 * Also helps highlight that there is a reading being taken.
+	 */
 	all_leds_off();
 
 	/* briefly sleep the thread to give time to run the LED thread */
@@ -285,11 +284,9 @@ void app_work_sensor_read(void)
 	/* Start taking readings */
 
 	/* BH1749 */
-
-	err = sensor_sample_fetch_chan(light, SENSOR_CHAN_ALL);
-	/* The sensor does only support fetching SENSOR_CHAN_ALL */
+	err = sensor_sample_fetch(light);
 	if (err) {
-		LOG_ERR("sensor_sample_fetch failed err %d", err);
+		LOG_ERR("Error fetching BH1749 sensor sample: %d", err);
 		return;
 	}
 	sensor_channel_get(light, SENSOR_CHAN_RED, &BH1749_RED);
@@ -299,8 +296,11 @@ void app_work_sensor_read(void)
 	LOG_DBG("R: %d, G: %d, B: %d, IR: %d", BH1749_RED.val1, BH1749_GREEN.val1, BH1749_BLUE.val1, BH1749_IR.val1);
 
 	/* BME680 */
-
-	sensor_sample_fetch(weather);
+	err = sensor_sample_fetch(weather);
+	if (err) {
+		LOG_ERR("Error fetching BME680 sensor sample: %d", err);
+		return;
+	}
 	sensor_channel_get(weather, SENSOR_CHAN_AMBIENT_TEMP, &temp);
 	sensor_channel_get(weather, SENSOR_CHAN_PRESS, &press);
 	sensor_channel_get(weather, SENSOR_CHAN_HUMIDITY, &humidity);
@@ -313,8 +313,11 @@ void app_work_sensor_read(void)
 
 
 	/* ADXL362 */
-
-	sensor_sample_fetch(accel);
+	err = sensor_sample_fetch(accel);
+	if (err) {
+		LOG_ERR("Error fetching ADXL362 sensor sample: %d", err);
+		return;
+	}
 	sensor_channel_get(accel, SENSOR_CHAN_ACCEL_X, &accel_x);
 	sensor_channel_get(accel, SENSOR_CHAN_ACCEL_Y, &accel_y);
 	sensor_channel_get(accel, SENSOR_CHAN_ACCEL_Z, &accel_z);
@@ -339,7 +342,6 @@ void app_work_sensor_read(void)
 		 accel_z.val1, abs(accel_z.val2));
 
 	/* Send to LightDB Stream on "sensor" endpoint */
-
 	err = golioth_stream_push_cb(client, "sensor", GOLIOTH_CONTENT_FORMAT_APP_JSON, json_buf,
 				     strlen(json_buf), async_error_handler, NULL);
 	if (err) {

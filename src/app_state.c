@@ -15,14 +15,11 @@ LOG_MODULE_REGISTER(app_state, LOG_LEVEL_DBG);
 #include "app_work.h"
 
 #define DEVICE_STATE_FMT "{\"counter_up\":%d,\"counter_down\":%d}"
-#define BUTTON_STATE_FMT "{\"last_press\":%d,\"this_press\":%d}"
-#define MAX_COUNT 10000
-#define MIN_COUNT 0
+#define MAX_COUNT	 10000
+#define MIN_COUNT	 0
 
 uint32_t _counter_up = MIN_COUNT;
 uint32_t _counter_down = MAX_COUNT - 1;
-
-uint32_t _last_button_press_time=0;
 
 static struct golioth_client *client;
 
