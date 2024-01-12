@@ -22,10 +22,10 @@ void play_golioth_once(void);
 #define BUZZER_MIN_FREQ 75
 
 #define sixteenth 38
-#define eigth 75
-#define quarter 150
-#define half 300
-#define whole 600
+#define eigth	  75
+#define quarter	  150
+#define half	  300
+#define whole	  600
 
 #define C4  262
 #define Db4 277

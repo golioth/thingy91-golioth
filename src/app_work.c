@@ -18,8 +18,8 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 #include "app_settings.h"
 
 #define FUNKYTOWN_NOTES 13
-#define MARIO_NOTES 37
-#define GOLIOTH_NOTES 21
+#define MARIO_NOTES	37
+#define GOLIOTH_NOTES	21
 
 static struct golioth_client *client;
 
@@ -32,8 +32,7 @@ const struct device *accel = DEVICE_DT_GET_ONE(adi_adxl362);
 
 const struct pwm_dt_spec sBuzzer = PWM_DT_SPEC_GET(DT_ALIAS(buzzer_pwm));
 
-enum song_choice
-{
+enum song_choice {
 	beep,
 	funkytown,
 	mario,
@@ -42,10 +41,9 @@ enum song_choice
 
 enum song_choice song = 3;
 
-struct note_duration
-{
-	int note;	  // hz
-	int duration; // msec
+struct note_duration {
+	int note;     /* hz */
+	int duration; /* msec */
 };
 
 struct note_duration funkytown_song[FUNKYTOWN_NOTES] = {
@@ -76,7 +74,7 @@ struct note_duration mario_song[MARIO_NOTES] = {
 	{.note = REST, .duration = quarter},
 	{.note = G4, .duration = whole},
 	{.note = REST, .duration = whole},
-	// break in sound
+	/* break in sound */
 	{.note = C6, .duration = half},
 	{.note = REST, .duration = quarter},
 	{.note = G5, .duration = half},
@@ -127,11 +125,8 @@ extern void buzzer_thread(void *d0, void *d1, void *d2)
 {
 	/* Block until buzzer is available */
 	k_sem_take(&buzzer_initialized_sem, K_FOREVER);
-	while (1)
-	{
-
-		switch (song)
-		{
+	while (1) {
+		switch (song) {
 		case 0:
 			LOG_DBG("beep");
 			pwm_set_dt(&sBuzzer, PWM_HZ(1000), PWM_HZ(1000) / 2);
@@ -145,7 +140,8 @@ extern void buzzer_thread(void *d0, void *d1, void *d2)
 					pwm_set_pulse_dt(&sBuzzer, 0);
 					k_msleep(funkytown_song[i].duration);
 				} else {
-					pwm_set_dt(&sBuzzer, PWM_HZ(funkytown_song[i].note), PWM_HZ((funkytown_song[i].note)) / 2);
+					pwm_set_dt(&sBuzzer, PWM_HZ(funkytown_song[i].note),
+						   PWM_HZ((funkytown_song[i].note)) / 2);
 					k_msleep(funkytown_song[i].duration);
 				}
 			}
@@ -159,20 +155,22 @@ extern void buzzer_thread(void *d0, void *d1, void *d2)
 					pwm_set_pulse_dt(&sBuzzer, 0);
 					k_msleep(mario_song[i].duration);
 				} else {
-					pwm_set_dt(&sBuzzer, PWM_HZ(mario_song[i].note), PWM_HZ((mario_song[i].note)) / 2);
+					pwm_set_dt(&sBuzzer, PWM_HZ(mario_song[i].note),
+						   PWM_HZ((mario_song[i].note)) / 2);
 					k_msleep(mario_song[i].duration);
 				}
 			}
 			break;
 		case 3:
 			LOG_DBG("golioth");
-			for (int i = 0; i < (sizeof(golioth_song)/sizeof(golioth_song[1])); i++) {
+			for (int i = 0; i < (sizeof(golioth_song) / sizeof(golioth_song[1])); i++) {
 				if (golioth_song[i].note < 10) {
 					/* Low frequency notes represent a 'pause' */
 					pwm_set_pulse_dt(&sBuzzer, 0);
 					k_msleep(golioth_song[i].duration);
 				} else {
-					pwm_set_dt(&sBuzzer, PWM_HZ(golioth_song[i].note), PWM_HZ((golioth_song[i].note)) / 2);
+					pwm_set_dt(&sBuzzer, PWM_HZ(golioth_song[i].note),
+						   PWM_HZ((golioth_song[i].note)) / 2);
 					k_msleep(golioth_song[i].duration);
 				}
 			}
@@ -190,7 +188,7 @@ extern void buzzer_thread(void *d0, void *d1, void *d2)
 	}
 }
 
-int app_buzzer_init()
+int app_buzzer_init(void)
 {
 	if (!device_is_ready(sBuzzer.dev)) {
 		return -ENODEV;
@@ -199,8 +197,7 @@ int app_buzzer_init()
 	return 0;
 }
 
-K_THREAD_DEFINE(buzzer_tid, BUZZER_STACK,
-		buzzer_thread, NULL, NULL, NULL,
+K_THREAD_DEFINE(buzzer_tid, BUZZER_STACK, buzzer_thread, NULL, NULL, NULL,
 		K_LOWEST_APPLICATION_THREAD_PRIO, 0, 0);
 
 void play_beep_once(void)
@@ -293,7 +290,8 @@ void app_work_sensor_read(void)
 	sensor_channel_get(light, SENSOR_CHAN_GREEN, &BH1749_GREEN);
 	sensor_channel_get(light, SENSOR_CHAN_BLUE, &BH1749_BLUE);
 	sensor_channel_get(light, SENSOR_CHAN_IR, &BH1749_IR);
-	LOG_DBG("R: %d, G: %d, B: %d, IR: %d", BH1749_RED.val1, BH1749_GREEN.val1, BH1749_BLUE.val1, BH1749_IR.val1);
+	LOG_DBG("R: %d, G: %d, B: %d, IR: %d", BH1749_RED.val1, BH1749_GREEN.val1, BH1749_BLUE.val1,
+		BH1749_IR.val1);
 
 	/* BME680 */
 	err = sensor_sample_fetch(weather);
@@ -305,12 +303,8 @@ void app_work_sensor_read(void)
 	sensor_channel_get(weather, SENSOR_CHAN_PRESS, &press);
 	sensor_channel_get(weather, SENSOR_CHAN_HUMIDITY, &humidity);
 	sensor_channel_get(weather, SENSOR_CHAN_GAS_RES, &gas_res);
-
-	LOG_DBG("T: %d.%06d; P: %d.%06d; H: %d.%06d; G: %d.%06d",
-			temp.val1, abs(temp.val2), press.val1, press.val2,
-			humidity.val1, humidity.val2, gas_res.val1,
-			gas_res.val2);
-
+	LOG_DBG("T: %d.%06d; P: %d.%06d; H: %d.%06d; G: %d.%06d", temp.val1, abs(temp.val2),
+		press.val1, press.val2, humidity.val1, humidity.val2, gas_res.val1, gas_res.val2);
 
 	/* ADXL362 */
 	err = sensor_sample_fetch(accel);
@@ -321,25 +315,15 @@ void app_work_sensor_read(void)
 	sensor_channel_get(accel, SENSOR_CHAN_ACCEL_X, &accel_x);
 	sensor_channel_get(accel, SENSOR_CHAN_ACCEL_Y, &accel_y);
 	sensor_channel_get(accel, SENSOR_CHAN_ACCEL_Z, &accel_z);
-
-	LOG_DBG("X: %d.%06d; Y: %d.%06d; Z: %d.%06d",
-			accel_x.val1, abs(accel_x.val2), accel_y.val1, abs(accel_y.val2),
-			accel_z.val1, abs(accel_z.val2));
+	LOG_DBG("X: %d.%06d; Y: %d.%06d; Z: %d.%06d", accel_x.val1, abs(accel_x.val2), accel_y.val1,
+		abs(accel_y.val2), accel_z.val1, abs(accel_z.val2));
 
 	/* Format data for LightDB Stream */
-
-	snprintk(json_buf, sizeof(json_buf), JSON_FMT,
-		 temp.val1, abs(temp.val2),
-		 press.val1, press.val2,
-		 humidity.val1, humidity.val2,
-		 gas_res.val1, gas_res.val2,
-		 BH1749_RED.val1,
-		 BH1749_GREEN.val1,
-		 BH1749_BLUE.val1,
-		 BH1749_IR.val1,
-		 accel_x.val1, abs(accel_x.val2),
-		 accel_y.val1, abs(accel_y.val2),
-		 accel_z.val1, abs(accel_z.val2));
+	snprintk(json_buf, sizeof(json_buf), JSON_FMT, temp.val1, abs(temp.val2), press.val1,
+		 press.val2, humidity.val1, humidity.val2, gas_res.val1, gas_res.val2,
+		 BH1749_RED.val1, BH1749_GREEN.val1, BH1749_BLUE.val1, BH1749_IR.val1, accel_x.val1,
+		 abs(accel_x.val2), accel_y.val1, abs(accel_y.val2), accel_z.val1,
+		 abs(accel_z.val2));
 
 	/* Send to LightDB Stream on "sensor" endpoint */
 	err = golioth_stream_push_cb(client, "sensor", GOLIOTH_CONTENT_FORMAT_APP_JSON, json_buf,
