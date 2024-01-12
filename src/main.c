@@ -62,9 +62,6 @@ static void golioth_on_connect(struct golioth_client *client)
 #ifdef CONFIG_SOC_NRF9160
 static void process_lte_connected(void)
 {
-	/* Change the state of the Internet LED on Ostentus */
-	IF_ENABLED(CONFIG_LIB_OSTENTUS, (led_internet_set(1);));
-
 	golioth_system_client_start();
 }
 
