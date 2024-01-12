@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Golioth, Inc.
+ * Copyright (c) 2022-2023 Golioth, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -7,32 +7,25 @@
 #ifndef __APP_WORK_H__
 #define __APP_WORK_H__
 
+#include <net/golioth/system_client.h>
+
 void app_work_init(struct golioth_client *work_client);
 void app_work_sensor_read(void);
+
 int app_buzzer_init(void);
 void play_funkytown_once(void);
 void play_mario_once(void);
 void play_beep_once(void);
 void play_golioth_once(void);
 
-/**
- * Each Ostentus slide needs a unique key. You may add additional slides by
- * inserting elements with the name of your choice to this enum.
- */
-typedef enum {
-	UP_COUNTER,
-	DN_COUNTER
-} slide_key;
-
-
 #define BUZZER_MAX_FREQ 2500
 #define BUZZER_MIN_FREQ 75
 
 #define sixteenth 38
-#define eigth 75
-#define quarter 150
-#define half 300
-#define whole 600
+#define eigth	  75
+#define quarter	  150
+#define half	  300
+#define whole	  600
 
 #define C4  262
 #define Db4 277
@@ -72,7 +65,5 @@ typedef enum {
 #define B6  1976
 
 #define REST 1
-
-
 
 #endif /* __APP_WORK_H__ */

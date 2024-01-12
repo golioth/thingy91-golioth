@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Golioth, Inc.
+# Copyright (c) 2022-2023 Golioth, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
 mainmenu "Golioth application options"
@@ -12,7 +12,5 @@ config DNS_SERVER1
 	default "1.1.1.1"
 
 endif # DNS_RESOLVER
-
-rsource "src/battery_monitor/Kconfig"
 
 source "Kconfig.zephyr"
