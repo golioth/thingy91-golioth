@@ -18,10 +18,6 @@ LOG_MODULE_REGISTER(app_work, LOG_LEVEL_DBG);
 
 #include <stdlib.h>
 
-#ifdef CONFIG_ALUDEL_BATTERY_MONITOR
-#include "battery_monitor/battery.h"
-#endif
-
 #define FUNKYTOWN_NOTES 13
 #define MARIO_NOTES 37
 #define GOLIOTH_NOTES 21
@@ -277,9 +273,6 @@ void app_work_sensor_read(void)
 	struct sensor_value accel_x;
 	struct sensor_value accel_y;
 	struct sensor_value accel_z;
-
-	/* Log battery levels if possible */
-	IF_ENABLED(CONFIG_ALUDEL_BATTERY_MONITOR, (log_battery_info();));
 
 	/* Turn off LED so light sensor won't detect LED fade
 	   Also helps highlight that there is a reading being taken.
