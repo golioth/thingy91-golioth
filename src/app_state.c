@@ -49,6 +49,7 @@ void state_counter_change(void)
 	if (_counter_up < MAX_COUNT) {
 		_counter_up++;
 	}
+	LOG_DBG("D: %d; U: %d", _counter_down, _counter_up);
 	app_state_update_actual();
 }
 
