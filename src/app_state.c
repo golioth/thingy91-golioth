@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Golioth, Inc.
+ * Copyright (c) 2022-2023 Golioth, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -15,14 +15,11 @@ LOG_MODULE_REGISTER(app_state, LOG_LEVEL_DBG);
 #include "app_work.h"
 
 #define DEVICE_STATE_FMT "{\"counter_up\":%d,\"counter_down\":%d}"
-#define BUTTON_STATE_FMT "{\"last_press\":%d,\"this_press\":%d}"
-#define MAX_COUNT 10000
-#define MIN_COUNT 0
+#define MAX_COUNT	 10000
+#define MIN_COUNT	 0
 
 uint32_t _counter_up = MIN_COUNT;
 uint32_t _counter_down = MAX_COUNT - 1;
-
-uint32_t _last_button_press_time=0;
 
 static struct golioth_client *client;
 
@@ -44,17 +41,15 @@ void app_state_init(struct golioth_client *state_client)
 	k_sem_give(&update_actual);
 }
 
-
 void state_counter_change(void)
 {
-	if (_counter_down > MIN_COUNT)
-	{
+	if (_counter_down > MIN_COUNT) {
 		_counter_down--;
 	}
-	if (_counter_up < MAX_COUNT)
-	{
+	if (_counter_up < MAX_COUNT) {
 		_counter_up++;
 	}
+	LOG_DBG("D: %d; U: %d", _counter_down, _counter_up);
 	app_state_update_actual();
 }
 
@@ -125,8 +120,7 @@ int app_state_desired_handler(struct golioth_req_rsp *rsp)
 		/* Process counter_up */
 		if ((parsed_state.counter_up >= MIN_COUNT) &&
 		    (parsed_state.counter_up < MAX_COUNT)) {
-			LOG_DBG("Validated desired counter_up value: %d",
-				parsed_state.counter_up);
+			LOG_DBG("Validated desired counter_up value: %d", parsed_state.counter_up);
 			if (_counter_up != parsed_state.counter_up) {
 				_counter_up = parsed_state.counter_up;
 				++state_change_count;
@@ -135,8 +129,7 @@ int app_state_desired_handler(struct golioth_req_rsp *rsp)
 		} else if (parsed_state.counter_up == -1) {
 			LOG_DBG("No change requested for counter_up");
 		} else {
-			LOG_ERR("Invalid desired counter_up value: %d",
-				parsed_state.counter_up);
+			LOG_ERR("Invalid desired counter_up value: %d", parsed_state.counter_up);
 			++desired_processed_count;
 		}
 	}

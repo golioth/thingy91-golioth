@@ -1,19 +1,19 @@
 /*
- * Copyright (c) 2022 Golioth, Inc.
+ * Copyright (c) 2022-2023 Golioth, Inc.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include <stdlib.h>
+#include <stdio.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(app_dfu, LOG_LEVEL_DBG);
 
-#include <net/golioth/fw.h>
-#include <net/golioth/system_client.h>
-
-#include <stdlib.h>
-#include <stdio.h>
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/sys/reboot.h>
+
+#include <net/golioth/fw.h>
+#include <net/golioth/system_client.h>
 
 #include "flash.h"
 
@@ -174,6 +174,8 @@ static int golioth_desired_update(struct golioth_req_rsp *rsp)
 		LOG_INF("Desired version (%s) matches current firmware version!",
 			current_version_str);
 		return -EALREADY;
+	} else {
+		LOG_INF("Server advertises %s as latest version. Beginning download.", dfu->version);
 	}
 
 	uri_p = uri_strip_leading_slash(uri, &uri_len);

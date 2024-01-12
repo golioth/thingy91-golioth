@@ -17,10 +17,6 @@ LOG_MODULE_REGISTER(thingy91_golioth, LOG_LEVEL_DBG);
 #include "app_work.h"
 #include "dfu/app_dfu.h"
 
-#ifdef CONFIG_ALUDEL_BATTERY_MONITOR
-#include "battery_monitor/battery.h"
-#endif
-
 #include <zephyr/drivers/gpio.h>
 
 #ifdef CONFIG_MODEM_INFO
@@ -32,7 +28,7 @@ static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 K_SEM_DEFINE(connected, 0, 1);
 K_SEM_DEFINE(dfu_status_unreported, 1, 1);
 
-static k_tid_t _system_thread = 0;
+static k_tid_t _system_thread;
 
 static const struct gpio_dt_spec golioth_led = GPIO_DT_SPEC_GET(DT_ALIAS(golioth_led), gpios);
 static const struct gpio_dt_spec user_btn = GPIO_DT_SPEC_GET(DT_ALIAS(sw1), gpios);
@@ -66,9 +62,6 @@ static void golioth_on_connect(struct golioth_client *client)
 #ifdef CONFIG_SOC_NRF9160
 static void process_lte_connected(void)
 {
-	/* Change the state of the Internet LED on Ostentus */
-	IF_ENABLED(CONFIG_LIB_OSTENTUS, (led_internet_set(1);));
-
 	golioth_system_client_start();
 }
 
@@ -106,9 +99,6 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		case LTE_LC_NW_REG_REGISTERED_ROAMING:
 			LOG_INF("Network: Registered (roaming)");
 			process_lte_connected();
-			break;
-		case LTE_LC_NW_REG_REGISTERED_EMERGENCY:
-			LOG_INF("Network: Registered (emergency)");
 			break;
 		case LTE_LC_NW_REG_UICC_FAIL:
 			LOG_INF("Network: UICC fail");
@@ -152,6 +142,7 @@ static void log_modem_firmware_version(void)
 void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
 	uint32_t button_kernel_time = k_cycle_get_32();
+
 	LOG_DBG("Button pressed at %d", button_kernel_time);
 
 	play_beep_once();
@@ -161,7 +152,7 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t
 /* Set (unset) LED indicators for active Golioth connection */
 void golioth_connection_led_set(uint8_t state)
 {
-	app_led_pwm_init(); // Once the connection is available, fire up the LED pwms
+	app_led_pwm_init(); /* Once the connection is available, fire up the LED pwms */
 }
 
 int main(void)
@@ -170,7 +161,7 @@ int main(void)
 
 	LOG_DBG("Start Thingy91 Golioth sample");
 
-	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMAGE_VERSION);
+	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 	IF_ENABLED(CONFIG_MODEM_INFO, (log_modem_firmware_version();));
 
 	/* Get system thread id so loop delay change event can wake main */

@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Golioth, Inc.
+# Copyright (c) 2022-2023 Golioth, Inc.
 # SPDX-License-Identifier: Apache-2.0
 
 manifest:
@@ -7,7 +7,7 @@ manifest:
   projects:
     - name: golioth
       path: modules/lib/golioth
-      revision: v0.7.1
+      revision: v0.8.0
       url: https://github.com/golioth/golioth-zephyr-sdk
       west-commands: scripts/west-commands.yml
       import:
@@ -32,8 +32,8 @@ manifest:
 
     - name: golioth-zephyr-boards
       path: deps/modules/lib/golioth-boards
-      revision: v1.0.0
-      url: git@github.com:golioth/golioth-zephyr-boards.git
+      revision: v1.0.1
+      url: https://github.com/golioth/golioth-zephyr-boards
 
     - name: zephyr-network-info
       path: deps/modules/lib/network-info
