@@ -41,15 +41,12 @@ void app_state_init(struct golioth_client *state_client)
 	k_sem_give(&update_actual);
 }
 
-
 void state_counter_change(void)
 {
-	if (_counter_down > MIN_COUNT)
-	{
+	if (_counter_down > MIN_COUNT) {
 		_counter_down--;
 	}
-	if (_counter_up < MAX_COUNT)
-	{
+	if (_counter_up < MAX_COUNT) {
 		_counter_up++;
 	}
 	app_state_update_actual();
@@ -122,8 +119,7 @@ int app_state_desired_handler(struct golioth_req_rsp *rsp)
 		/* Process counter_up */
 		if ((parsed_state.counter_up >= MIN_COUNT) &&
 		    (parsed_state.counter_up < MAX_COUNT)) {
-			LOG_DBG("Validated desired counter_up value: %d",
-				parsed_state.counter_up);
+			LOG_DBG("Validated desired counter_up value: %d", parsed_state.counter_up);
 			if (_counter_up != parsed_state.counter_up) {
 				_counter_up = parsed_state.counter_up;
 				++state_change_count;
@@ -132,8 +128,7 @@ int app_state_desired_handler(struct golioth_req_rsp *rsp)
 		} else if (parsed_state.counter_up == -1) {
 			LOG_DBG("No change requested for counter_up");
 		} else {
-			LOG_ERR("Invalid desired counter_up value: %d",
-				parsed_state.counter_up);
+			LOG_ERR("Invalid desired counter_up value: %d", parsed_state.counter_up);
 			++desired_processed_count;
 		}
 	}

@@ -107,6 +107,7 @@ static enum golioth_rpc_status on_play_song(zcbor_state_t *request_params_array,
 	}
 
 	uint8_t sbuf[str_decode.len + 1];
+
 	snprintk(sbuf, sizeof(sbuf), "%s", str_decode.value);
 	LOG_DBG("Received argument '%s' from 'play_song' RPC", sbuf);
 
@@ -125,7 +126,6 @@ static enum golioth_rpc_status on_play_song(zcbor_state_t *request_params_array,
 		     zcbor_tstr_put_term(response_detail_map, sbuf);
 		return GOLIOTH_RPC_INVALID_ARGUMENT;
 	}
-
 
 	ok = zcbor_tstr_put_lit(response_detail_map, "playing song") &&
 	     zcbor_tstr_put_term(response_detail_map, sbuf);
@@ -159,6 +159,7 @@ int app_rpc_init(struct golioth_client *state_client)
 int app_rpc_observe(void)
 {
 	int err = golioth_rpc_observe(client);
+
 	if (err) {
 		LOG_ERR("Failed to observe RPC: %d", err);
 	}

@@ -28,7 +28,7 @@ static struct golioth_client *client = GOLIOTH_SYSTEM_CLIENT_GET();
 K_SEM_DEFINE(connected, 0, 1);
 K_SEM_DEFINE(dfu_status_unreported, 1, 1);
 
-static k_tid_t _system_thread = 0;
+static k_tid_t _system_thread;
 
 static const struct gpio_dt_spec golioth_led = GPIO_DT_SPEC_GET(DT_ALIAS(golioth_led), gpios);
 static const struct gpio_dt_spec user_btn = GPIO_DT_SPEC_GET(DT_ALIAS(sw1), gpios);
@@ -142,6 +142,7 @@ static void log_modem_firmware_version(void)
 void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
 	uint32_t button_kernel_time = k_cycle_get_32();
+
 	LOG_DBG("Button pressed at %d", button_kernel_time);
 
 	play_beep_once();
@@ -151,7 +152,7 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t
 /* Set (unset) LED indicators for active Golioth connection */
 void golioth_connection_led_set(uint8_t state)
 {
-	app_led_pwm_init(); // Once the connection is available, fire up the LED pwms
+	app_led_pwm_init(); /* Once the connection is available, fire up the LED pwms */
 }
 
 int main(void)
