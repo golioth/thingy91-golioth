@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Remove unsupported board overlays.
 - Remove Aludel Mini-specific battery monitor code.
+- Remove references to Ostentus.
 
 ## [1.0.0] - 2023-05-02
 
