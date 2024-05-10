@@ -11,17 +11,35 @@ LOG_MODULE_REGISTER(app_state, LOG_LEVEL_DBG);
 #include <golioth/lightdb_state.h>
 #include <zephyr/data/json.h>
 #include <zephyr/kernel.h>
-#include "json_helper.h"
 
 #include "app_state.h"
-#include "app_sensors.h"
 
+#define DEVICE_STATE_DEFAULT "-1"
 #define DEVICE_STATE_FMT "{\"counter_up\":%d,\"counter_down\":%d}"
 #define MAX_COUNT	 10000
 #define MIN_COUNT	 0
 
+static int app_state_update_actual(void);
+
 uint32_t _counter_up = MIN_COUNT;
 uint32_t _counter_down = MAX_COUNT - 1;
+
+enum counter_dir {
+	COUNTER_UP,
+	COUNTER_DN,
+	COUNTER_DIR_TOTAL
+
+};
+
+#define APP_STATE_DESIRED_UP_ENDP "desired/counter_up"
+#define APP_STATE_DESIRED_DN_ENDP "desired/counter_down"
+#define APP_STATE_ACTUAL_ENDP  "state"
+#define APP_STATE_BUTTON_ENDP  "button"
+
+const char *endp_list[COUNTER_DIR_TOTAL] = {
+	APP_STATE_DESIRED_UP_ENDP,
+	APP_STATE_DESIRED_DN_ENDP
+};
 
 static struct golioth_client *client;
 
@@ -50,20 +68,21 @@ void state_counter_change(void)
 	app_state_update_actual();
 }
 
-int app_state_reset_desired(void)
+static int app_state_reset_desired(enum counter_dir counter_idx)
 {
-	LOG_INF("Resetting \"%s\" LightDB State endpoint to defaults.", APP_STATE_DESIRED_ENDP);
+	if ((counter_idx < 0) || (counter_idx > COUNTER_DIR_TOTAL)) {
+		LOG_ERR("Counter index out of bounds: %d", counter_idx);
+		return -EFAULT;
+	}
 
-	char sbuf[sizeof(DEVICE_STATE_FMT) + 4]; /* space for two "-1" values */
-
-	snprintk(sbuf, sizeof(sbuf), DEVICE_STATE_FMT, -1, -1);
+	LOG_INF("Resetting \"%s\" LightDB State path to default.", endp_list[counter_idx]);
 
 	int err;
 	err = golioth_lightdb_set_async(client,
-					APP_STATE_DESIRED_ENDP,
+					endp_list[counter_idx],
 					GOLIOTH_CONTENT_TYPE_JSON,
-					sbuf,
-					strlen(sbuf),
+					DEVICE_STATE_DEFAULT,
+					strlen(DEVICE_STATE_DEFAULT),
 					async_handler,
 					NULL);
 	if (err) {
@@ -72,7 +91,7 @@ int app_state_reset_desired(void)
 	return err;
 }
 
-int app_state_update_actual(void)
+static int app_state_update_actual(void)
 {
 
 	char sbuf[sizeof(DEVICE_STATE_FMT) + 20]; /* space for uint32 values */
@@ -103,83 +122,78 @@ static void app_state_desired_handler(struct golioth_client *client,
 				      void *arg)
 {
 	int err = 0;
-	int ret;
+	int direction = (enum counter_dir)arg;
+	uint32_t *cur_counter;
+
+	switch (direction) {
+		case COUNTER_UP:
+			cur_counter = &_counter_up;
+			break;
+		case COUNTER_DN:
+			cur_counter = &_counter_down;
+			break;
+		default:
+			LOG_ERR("User arg out of bounds: %d", direction);
+			return;
+	}
+
+	const char *endp_str = endp_list[direction];
 
 	if (response->status != GOLIOTH_OK) {
 		LOG_ERR("Failed to receive '%s' endpoint: %d",
-			APP_STATE_DESIRED_ENDP,
+			endp_str,
 			response->status);
 		return;
 	}
 
-	LOG_HEXDUMP_DBG(payload, payload_size, APP_STATE_DESIRED_ENDP);
+	LOG_HEXDUMP_DBG(payload, payload_size, endp_str);
 
-	struct app_state parsed_state;
+	/* Largest uint32_t is 4294967295, 10 digits plus null terminator */
+	if (payload_size > 11)
+	{
+		LOG_ERR("Payload too large: %d", payload_size);
+		goto reset_desired;
+	}
 
-	ret = json_obj_parse((char *)payload, payload_size, app_state_descr,
-			     ARRAY_SIZE(app_state_descr), &parsed_state);
+	char payload_str[11];
+	memcpy(payload_str, payload, MIN(sizeof(payload_str), payload_size));
 
-	if (ret < 0) {
-		LOG_ERR("Error parsing desired values: %d", ret);
-		app_state_reset_desired();
+	if (strncmp(DEVICE_STATE_DEFAULT, payload_str, strlen(DEVICE_STATE_DEFAULT)) == 0) {
+		/* Received the default desired value, do nothing */
 		return;
 	}
 
-	uint8_t desired_processed_count = 0;
-	uint8_t state_change_count = 0;
+	errno = 0;
+	char *end = &payload_str[strlen(payload_str)];
 
-	if (ret & 1 << 0) {
-		/* Process counter_up */
-		if ((parsed_state.counter_up >= MIN_COUNT) &&
-		    (parsed_state.counter_up < MAX_COUNT)) {
-			LOG_DBG("Validated desired counter_up value: %d", parsed_state.counter_up);
-			if (_counter_up != parsed_state.counter_up) {
-				_counter_up = parsed_state.counter_up;
-				++state_change_count;
-			}
-			++desired_processed_count;
-		} else if (parsed_state.counter_up == -1) {
-			LOG_DBG("No change requested for counter_up");
-		} else {
-			LOG_ERR("Invalid desired counter_up value: %d", parsed_state.counter_up);
-			++desired_processed_count;
-		}
-	}
-	if (ret & 1 << 1) {
-		/* Process counter_down */
-		if ((parsed_state.counter_down >= MIN_COUNT) &&
-		    (parsed_state.counter_down < MAX_COUNT)) {
-			LOG_DBG("Validated desired counter_down value: %d",
-				parsed_state.counter_down);
-			if (_counter_down != parsed_state.counter_down) {
-				_counter_down = parsed_state.counter_down;
-				++state_change_count;
-			}
-			++desired_processed_count;
-			++state_change_count;
-		} else if (parsed_state.counter_down == -1) {
-			LOG_DBG("No change requested for counter_down");
-		} else {
-			LOG_ERR("Invalid desired counter_down value: %d",
-				parsed_state.counter_down);
-			++desired_processed_count;
-		}
+	uint32_t new_value = strtol(payload_str, &end, 10);
+	if ((errno != 0) || (end == payload_str)) {
+		LOG_ERR("Error converting string to number: %s", payload_str);
+		goto reset_desired;
 	}
 
-	if (state_change_count) {
-		/* The state was changed, so update the state on the Golioth servers */
-		err = app_state_update_actual();
-	}
-	if (desired_processed_count) {
-		/* We processed some desired changes to return these to -1 on the server
-		 * to indicate the desired values were received.
-		 */
-		err = app_state_reset_desired();
+	LOG_INF("Got payload for %s: %d", endp_str, new_value);
+
+	if ((new_value < MIN_COUNT) || (new_value > MAX_COUNT)) {
+		LOG_ERR("New %s value out of bounds: %d", endp_str, new_value);
+		goto reset_desired;
 	}
 
+	if (new_value == *cur_counter) {
+		LOG_INF("Stored value matches %s", endp_str);
+		goto reset_desired;
+	}
+
+	*cur_counter = new_value;
+	LOG_INF("Storing %d as new value for %s", new_value, endp_str);
+	err = app_state_update_actual();
 	if (err) {
 		LOG_ERR("Failed to update cloud state: %d", err);
 	}
+
+reset_desired:
+	app_state_reset_desired(direction);
+	return;
 }
 
 int app_state_observe(struct golioth_client *state_client)
@@ -188,8 +202,14 @@ int app_state_observe(struct golioth_client *state_client)
 
 	client = state_client;
 
-	err = golioth_lightdb_observe_async(client, APP_STATE_DESIRED_ENDP,
-						app_state_desired_handler, NULL);
+	err = golioth_lightdb_observe_async(client, APP_STATE_DESIRED_UP_ENDP,
+						app_state_desired_handler, (void *) COUNTER_UP);
+	if (err) {
+		LOG_WRN("failed to observe lightdb path: %d", err);
+		return err;
+	}
+	err = golioth_lightdb_observe_async(client, APP_STATE_DESIRED_DN_ENDP,
+						app_state_desired_handler, (void *) COUNTER_DN);
 	if (err) {
 		LOG_WRN("failed to observe lightdb path: %d", err);
 		return err;
