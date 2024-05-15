@@ -63,7 +63,7 @@ void all_leds_off(void)
 
 extern void led_pwm_thread(void *d0, void *d1, void *d2)
 {
-	/* Block until buzzer is available */
+	/* Block until led pwm is ready */
 	k_sem_take(&led_pwm_initialized_sem, K_FOREVER);
 	while (1) {
 		int ret = 0;
