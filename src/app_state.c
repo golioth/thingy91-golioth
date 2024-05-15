@@ -9,7 +9,6 @@ LOG_MODULE_REGISTER(app_state, LOG_LEVEL_DBG);
 
 #include <golioth/client.h>
 #include <golioth/lightdb_state.h>
-#include <zephyr/data/json.h>
 #include <zephyr/kernel.h>
 
 #include "app_state.h"
@@ -21,8 +20,8 @@ LOG_MODULE_REGISTER(app_state, LOG_LEVEL_DBG);
 
 static int app_state_update_actual(void);
 
-uint32_t _counter_up = MIN_COUNT;
-uint32_t _counter_down = MAX_COUNT - 1;
+int32_t _counter_up = MIN_COUNT;
+int32_t _counter_down = MAX_COUNT - 1;
 
 enum counter_dir {
 	COUNTER_UP,
@@ -33,8 +32,7 @@ enum counter_dir {
 
 #define APP_STATE_DESIRED_UP_ENDP "desired/counter_up"
 #define APP_STATE_DESIRED_DN_ENDP "desired/counter_down"
-#define APP_STATE_ACTUAL_ENDP  "state"
-#define APP_STATE_BUTTON_ENDP  "button"
+#define APP_STATE_ACTUAL_ENDP	  "state"
 
 const char *endp_list[COUNTER_DIR_TOTAL] = {
 	APP_STATE_DESIRED_UP_ENDP,
@@ -94,7 +92,7 @@ static int app_state_reset_desired(enum counter_dir counter_idx)
 static int app_state_update_actual(void)
 {
 
-	char sbuf[sizeof(DEVICE_STATE_FMT) + 20]; /* space for uint32 values */
+	char sbuf[sizeof(DEVICE_STATE_FMT) + 22]; /* space for two int32_t values */
 
 	snprintk(sbuf, sizeof(sbuf), DEVICE_STATE_FMT, _counter_up, _counter_down);
 
@@ -123,7 +121,7 @@ static void app_state_desired_handler(struct golioth_client *client,
 {
 	int err = 0;
 	int direction = (enum counter_dir)arg;
-	uint32_t *cur_counter;
+	int32_t *cur_counter;
 
 	switch (direction) {
 		case COUNTER_UP:
@@ -148,25 +146,26 @@ static void app_state_desired_handler(struct golioth_client *client,
 
 	LOG_HEXDUMP_DBG(payload, payload_size, endp_str);
 
-	/* Largest uint32_t is 4294967295, 10 digits plus null terminator */
+	/* Smallest int32_t is -2,147,483,647 -> 11 digits */
 	if (payload_size > 11)
 	{
 		LOG_ERR("Payload too large: %d", payload_size);
 		goto reset_desired;
 	}
 
-	char payload_str[11];
-	memcpy(payload_str, payload, MIN(sizeof(payload_str), payload_size));
+	/* 11 digits for int32_t + 1 digit for null terminator */
+	char payload_str[12] = {0};
+	memcpy(payload_str, payload, MIN(sizeof(payload_str) - 1, payload_size));
 
-	if (strncmp(DEVICE_STATE_DEFAULT, payload_str, strlen(DEVICE_STATE_DEFAULT)) == 0) {
+	if (strcmp(DEVICE_STATE_DEFAULT, payload_str) == 0) {
 		/* Received the default desired value, do nothing */
 		return;
 	}
 
 	errno = 0;
-	char *end = &payload_str[strlen(payload_str)];
+	char *end;
 
-	uint32_t new_value = strtol(payload_str, &end, 10);
+	int32_t new_value = strtol(payload_str, &end, 10);
 	if ((errno != 0) || (end == payload_str)) {
 		LOG_ERR("Error converting string to number: %s", payload_str);
 		goto reset_desired;
