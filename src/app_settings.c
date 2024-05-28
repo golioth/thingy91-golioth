@@ -157,7 +157,7 @@ static enum golioth_settings_status on_led_pct_setting(int32_t new_value, void *
 
 	/* Only update if value has changed */
 	if (*global_intensity_pct == new_value) {
-		LOG_DBG("Received %c intesity already matches local value.", color_letter);
+		LOG_DBG("Received %c intensity already matches local value.", color_letter);
 	} else {
 		*global_intensity_pct = new_value;
 		LOG_INF("Set %c intensity to %d percent", color_letter, *global_intensity_pct);
@@ -178,7 +178,7 @@ void check_register_settings_error_and_log(int err, const char *settings_str)
 	LOG_ERR("Failed to register settings callback for %s: %d", settings_str, err);
 }
 
-int app_settings_register(struct golioth_client *client)
+void app_settings_register(struct golioth_client *client)
 {
 	struct golioth_settings *settings = golioth_settings_init(client);
 	int err;
@@ -227,7 +227,4 @@ int app_settings_register(struct golioth_client *client)
 							   (void *) LED_B_CB_ARG);
 
 	check_register_settings_error_and_log(err, "BLUE_INTENSITY_PCT");
-
-	/* Caller isn't currently checking this value */
-	return 0;
 }

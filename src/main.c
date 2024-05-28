@@ -181,12 +181,11 @@ int main(void)
 #else
 	/* If nRF9160 is not used, start the Golioth Client and block until connected */
 
-		/* Start Golioth client */
-		golioth_system_client_start();
+	/* Start Golioth client */
+	golioth_system_client_start();
 
-		/* Block until connected to Golioth */
-		k_sem_take(&connected, K_FOREVER);
-	}
+	/* Block until connected to Golioth */
+	k_sem_take(&connected, K_FOREVER);
 
 	/* Start Golioth client */
 	start_golioth_client();

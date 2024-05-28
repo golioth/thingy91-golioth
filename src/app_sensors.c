@@ -330,14 +330,8 @@ void app_sensors_read_and_stream(void)
 		 abs(accel_z.val2));
 
 	/* Send to LightDB Stream on "sensor" endpoint */
-	golioth_stream_set_async(client, "test", GOLIOTH_CONTENT_TYPE_JSON, "{\"val\":3}", 9, NULL, NULL);
-	err = golioth_stream_set_async(client,
-				       "sensor",
-				       GOLIOTH_CONTENT_TYPE_JSON,
-				       json_buf,
-				       strlen(json_buf),
-				       async_error_handler,
-				       NULL);
+	err = golioth_stream_set_async(client, "sensor", GOLIOTH_CONTENT_TYPE_JSON, json_buf,
+				       strlen(json_buf), async_error_handler, NULL);
 	if (err) {
 		LOG_ERR("Failed to send sensor data to Golioth: %d", err);
 	}
