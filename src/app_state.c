@@ -201,14 +201,21 @@ int app_state_observe(struct golioth_client *state_client)
 
 	client = state_client;
 
-	err = golioth_lightdb_observe_async(client, APP_STATE_DESIRED_UP_ENDP,
-						app_state_desired_handler, (void *) COUNTER_UP);
+	err = golioth_lightdb_observe_async(client,
+					    APP_STATE_DESIRED_UP_ENDP,
+					    GOLIOTH_CONTENT_TYPE_JSON,
+					    app_state_desired_handler,
+					    (void *) COUNTER_UP);
 	if (err) {
 		LOG_WRN("failed to observe lightdb path: %d", err);
 		return err;
 	}
-	err = golioth_lightdb_observe_async(client, APP_STATE_DESIRED_DN_ENDP,
-						app_state_desired_handler, (void *) COUNTER_DN);
+
+	err = golioth_lightdb_observe_async(client,
+					    APP_STATE_DESIRED_DN_ENDP,
+					    GOLIOTH_CONTENT_TYPE_JSON,
+					    app_state_desired_handler,
+					    (void *) COUNTER_DN);
 	if (err) {
 		LOG_WRN("failed to observe lightdb path: %d", err);
 		return err;
