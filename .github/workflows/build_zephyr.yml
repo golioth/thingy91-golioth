@@ -13,7 +13,13 @@ on:
       BOARD:
         required: true
         type: string
-        default: aludel_mini_v1_sparkfun9160_ns
+        default: thingy91_nrf9160_ns
+      ARTIFACT:
+        required: true
+        type: boolean
+        default: false
+      TAG:
+        type: string
 
   workflow_call:
     inputs:
@@ -23,20 +29,29 @@ on:
       BOARD:
         required: true
         type: string
+      ARTIFACT:
+        required: true
+        type: boolean
+      TAG:
+        type: string
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    container: ghcr.io/beriberikix/golioth-zephyr-base:${{ inputs.ZEPHYR_SDK }}sdk
+    container: golioth/golioth-zephyr-base:${{ inputs.ZEPHYR_SDK }}-SDK-v0
 
     env:
       ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-${{ inputs.ZEPHYR_SDK }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: app
       - name: Setup West workspace
         run: |
-          west init -m https://github.com/$GITHUB_REPOSITORY .
+          west init -l app
           west update --narrow -o=--depth=1
           west zephyr-export
           pip3 install -r deps/zephyr/scripts/requirements-base.txt
@@ -45,24 +60,21 @@ jobs:
 
       - name: Build with West
         run: |
-          west build -p -b ${{ inputs.BOARD }} app -- -DCONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION=\"0.0.0\"
-
-      - name: Create filename prefix
-        run: echo "PREFIX=golioth-${{ github.event.repository.name }}-${{ inputs.BOARD }}" >> "$GITHUB_ENV"
-
-      - name: Generate short SHA
-        uses: benjlevesque/short-sha@v2.2
+          west build -p -b ${{ inputs.BOARD }} app
 
       - name: Prepare artifacts
+        if: inputs.ARTIFACT == true && inputs.TAG != ''
+
         run: |
           cd build/zephyr
           mkdir -p artifacts
-          mv merged.hex     ./artifacts/${{ env.PREFIX }}_full_${{ env.SHA }}.hex
-          mv app_update.bin ./artifacts/${{ env.PREFIX }}_update_${{ env.SHA }}.bin
-          mv zephyr.elf     ./artifacts/${{ env.PREFIX }}_${{ env.SHA }}.elf
+          mv merged.hex     ./artifacts/golioth-${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ inputs.BOARD }}_full.hex
+          mv app_update.bin ./artifacts/golioth-${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ inputs.BOARD }}_update.bin
+          mv zephyr.elf     ./artifacts/golioth-${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ inputs.BOARD }}.elf
 
       # Run IDs are unique per repo but are reused on re-runs
       - name: Save artifact
+        if: inputs.ARTIFACT == true
         uses: actions/upload-artifact@v3
         with:
           name: build_artifacts_${{ github.run_id }}

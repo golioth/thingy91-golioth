@@ -8,16 +8,14 @@
 #include <zephyr/logging/log_ctrl.h>
 LOG_MODULE_REGISTER(app_rpc, LOG_LEVEL_DBG);
 
-#include <net/golioth/system_client.h>
-#include <net/golioth/rpc.h>
+#include <golioth/client.h>
+#include <golioth/rpc.h>
 #include <zephyr/logging/log_ctrl.h>
 #include <zephyr/sys/reboot.h>
 
 #include <network_info.h>
-#include "app_work.h"
+#include "app_sensors.h"
 #include "app_rpc.h"
-
-static struct golioth_client *client;
 
 static void reboot_work_handler(struct k_work *work)
 {
@@ -149,38 +147,21 @@ static void rpc_log_if_register_failure(int err)
 	}
 }
 
-int app_rpc_init(struct golioth_client *state_client)
+void app_rpc_register(struct golioth_client *client)
 {
-	client = state_client;
-	int err = app_rpc_register(client);
-	return err;
-}
+	struct golioth_rpc *rpc = golioth_rpc_init(client);
 
-int app_rpc_observe(void)
-{
-	int err = golioth_rpc_observe(client);
-
-	if (err) {
-		LOG_ERR("Failed to observe RPC: %d", err);
-	}
-	return err;
-}
-
-int app_rpc_register(struct golioth_client *rpc_client)
-{
 	int err;
 
-	err = golioth_rpc_register(rpc_client, "get_network_info", on_get_network_info, NULL);
+	err = golioth_rpc_register(rpc, "get_network_info", on_get_network_info, NULL);
 	rpc_log_if_register_failure(err);
 
-	err = golioth_rpc_register(rpc_client, "reboot", on_reboot, NULL);
+	err = golioth_rpc_register(rpc, "reboot", on_reboot, NULL);
 	rpc_log_if_register_failure(err);
 
-	err = golioth_rpc_register(rpc_client, "set_log_level", on_set_log_level, NULL);
+	err = golioth_rpc_register(rpc, "set_log_level", on_set_log_level, NULL);
 	rpc_log_if_register_failure(err);
 
-	err = golioth_rpc_register(rpc_client, "play_song", on_play_song, NULL);
+	err = golioth_rpc_register(rpc, "play_song", on_play_song, NULL);
 	rpc_log_if_register_failure(err);
-
-	return err;
 }

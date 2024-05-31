@@ -5,9 +5,11 @@
  */
 
 #include <zephyr/logging/log.h>
+#include <sys/_stdint.h>
 LOG_MODULE_REGISTER(app_settings, LOG_LEVEL_DBG);
 
-#include <net/golioth/settings.h>
+#include <golioth/client.h>
+#include <golioth/settings.h>
 #include <zephyr/drivers/pwm.h>
 #include "main.h"
 
@@ -17,9 +19,17 @@ LOG_MODULE_REGISTER(app_settings, LOG_LEVEL_DBG);
 
 int period = 100000; /* should be 100 uSec */
 
-static struct golioth_client *client;
-
 static int32_t _loop_delay_s = 60;
+#define LOOP_DELAY_S_MAX 43200
+#define LOOP_DELAY_S_MIN 0
+#define LED_FADE_SPEED_MS_MAX 10000
+#define LED_FADE_SPEED_MS_MIN 500
+
+enum LED_PCT_CB_INDEX {
+	LED_R_CB_ARG,
+	LED_G_CB_ARG,
+	LED_B_CB_ARG,
+};
 
 static int32_t _red_intensity_pct = 50;
 static int32_t _green_intensity_pct = 50;
@@ -53,7 +63,7 @@ void all_leds_off(void)
 
 extern void led_pwm_thread(void *d0, void *d1, void *d2)
 {
-	/* Block until buzzer is available */
+	/* Block until led pwm is ready */
 	k_sem_take(&led_pwm_initialized_sem, K_FOREVER);
 	while (1) {
 		int ret = 0;
@@ -93,160 +103,128 @@ int32_t get_loop_delay_s(void)
 	return _loop_delay_s;
 }
 
-enum golioth_settings_status on_setting(const char *key, const struct golioth_settings_value *value)
+static enum golioth_settings_status on_loop_delay_setting(int32_t new_value, void *arg)
 {
-	LOG_DBG("Received setting: key = %s, type = %d", key, value->type);
-	if (strcmp(key, "LOOP_DELAY_S") == 0) {
-		/* This setting is expected to be numeric, return an error if it's not */
-		if (value->type != GOLIOTH_SETTINGS_VALUE_TYPE_INT64) {
-			LOG_DBG("Received LOOP_DELAY_S is not an integer type.");
-			return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
-		}
+	/* Only update if value has changed */
+	if (_loop_delay_s == new_value) {
+		LOG_DBG("Received LOOP_DELAY_S already matches local value.");
+	} else {
+		_loop_delay_s = new_value;
+		LOG_INF("Set loop delay to %i seconds", _loop_delay_s);
 
-		/* Limit to 12 hour max delay: [1, 43200] */
-		if (value->i64 < 1 || value->i64 > 43200) {
-			LOG_DBG("Received LOOP_DELAY_S setting is outside allowed range.");
-			return GOLIOTH_SETTINGS_VALUE_OUTSIDE_RANGE;
-		}
-
-		/* Only update if value has changed */
-		if (_loop_delay_s == (int32_t)value->i64) {
-			LOG_DBG("Received LOOP_DELAY_S already matches local value.");
-		} else {
-			_loop_delay_s = (int32_t)value->i64;
-			LOG_INF("Set loop delay to %d seconds", _loop_delay_s);
-
-			wake_system_thread();
-		}
-		return GOLIOTH_SETTINGS_SUCCESS;
+		wake_system_thread();
 	}
-
-	LOG_DBG("Received setting: key = %s, type = %d", key, value->type);
-	if (strcmp(key, "LED_FADE_SPEED_MS") == 0) {
-		/* This setting is expected to be numeric, return an error if it's not */
-		if (value->type != GOLIOTH_SETTINGS_VALUE_TYPE_INT64) {
-			LOG_DBG("Received LED_FADE_SPEED_MS is not an integer type.");
-			return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
-		}
-
-		/* Limit to 12 hour max delay: [1, 43200] */
-		if (value->i64 < 500 || value->i64 > 10000) {
-			LOG_DBG("Received LED_FADE_SPEED_MS setting is outside allowed range "
-				"(500-10000 ms).");
-			return GOLIOTH_SETTINGS_VALUE_OUTSIDE_RANGE;
-		}
-
-		/* Only update if value has changed */
-		if (_led_fade_speed_ms == (int32_t)value->i64) {
-			LOG_DBG("Received LED_FADE_SPEED_MS already matches local value.");
-		}
-
-		else {
-			_led_fade_speed_ms = (int32_t)value->i64;
-			LOG_INF("Set LED fade speed to %d milliseconds", _led_fade_speed_ms);
-			/* not waking system thread here, since the LED update thread is looping */
-		}
-		return GOLIOTH_SETTINGS_SUCCESS;
-	}
-
-	if (strcmp(key, "RED_INTENSITY_PCT") == 0) {
-		/* This setting is expected to be numeric, return an error if it's not */
-		if (value->type != GOLIOTH_SETTINGS_VALUE_TYPE_INT64) {
-			LOG_DBG("Received RED_INTENSITY_PCT is not an integer type.");
-			return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
-		}
-
-		/* Limit to 12 hour max delay: [1, 43200] */
-		if (value->i64 < 0 || value->i64 > 100) {
-			LOG_DBG("Received RED_INTENSITY_PCT setting is outside allowed range.");
-			return GOLIOTH_SETTINGS_VALUE_OUTSIDE_RANGE;
-		}
-
-		/* Only update if value has changed */
-		if (_red_intensity_pct == (int32_t)value->i64) {
-			LOG_DBG("Received RED_INTENSITY_PCT already matches local value.");
-		} else {
-			_red_intensity_pct = (int32_t)value->i64;
-			LOG_INF("Set red intensity to %d percent", _red_intensity_pct);
-			/* not waking system thread here, since the LED update thread is looping */
-		}
-		return GOLIOTH_SETTINGS_SUCCESS;
-	}
-
-	if (strcmp(key, "GREEN_INTENSITY_PCT") == 0) {
-		/* This setting is expected to be numeric, return an error if it's not */
-		if (value->type != GOLIOTH_SETTINGS_VALUE_TYPE_INT64) {
-			LOG_DBG("Received GREEN_INTENSITY_PCT is not an integer type.");
-			return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
-		}
-
-		/* Limit to 12 hour max delay: [1, 43200] */
-		if (value->i64 < 0 || value->i64 > 100) {
-			LOG_DBG("Received GREEN_INTENSITY_PCT setting is outside allowed range.");
-			return GOLIOTH_SETTINGS_VALUE_OUTSIDE_RANGE;
-		}
-
-		/* Only update if value has changed */
-		if (_green_intensity_pct == (int32_t)value->i64) {
-			LOG_DBG("Received GREEN_INTENSITY_PCT already matches local value.");
-		} else {
-			_green_intensity_pct = (int32_t)value->i64;
-			LOG_INF("Set green intensity to %d percent", _green_intensity_pct);
-			/* not waking system thread here, since the LED update thread is looping */
-		}
-		return GOLIOTH_SETTINGS_SUCCESS;
-	}
-
-	if (strcmp(key, "BLUE_INTENSITY_PCT") == 0) {
-		/* This setting is expected to be numeric, return an error if it's not */
-		if (value->type != GOLIOTH_SETTINGS_VALUE_TYPE_INT64) {
-			LOG_DBG("Received BLUE_INTENSITY_PCT is not an integer type.");
-			return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
-		}
-
-		/* Limit to 12 hour max delay: [1, 43200] */
-		if (value->i64 < 0 || value->i64 > 100) {
-			LOG_DBG("Received BLUE_INTENSITY_PCT setting is outside allowed range.");
-			return GOLIOTH_SETTINGS_VALUE_OUTSIDE_RANGE;
-		}
-
-		/* Only update if value has changed */
-		if (_blue_intensity_pct == (int32_t)value->i64) {
-			LOG_DBG("Received BLUE_INTENSITY_PCT already matches local value.");
-		} else {
-			_blue_intensity_pct = (int32_t)value->i64;
-			LOG_INF("Set blue intensity to %d percent", _blue_intensity_pct);
-			/* not waking system thread here, since the LED update thread is looping */
-		}
-		return GOLIOTH_SETTINGS_SUCCESS;
-	}
-
-	/* If the setting is not recognized, we should return an error */
-	return GOLIOTH_SETTINGS_KEY_NOT_RECOGNIZED;
+	return GOLIOTH_SETTINGS_SUCCESS;
 }
 
-int app_settings_init(struct golioth_client *state_client)
+static enum golioth_settings_status on_fade_speed_setting(int32_t new_value, void *arg)
 {
-	client = state_client;
-	int err = app_settings_register(client);
-	return err;
+	/* Only update if value has changed */
+	if (_led_fade_speed_ms == new_value) {
+		LOG_DBG("Received LED_FADE_SPEED_MS already matches local value.");
+	}
+
+	else {
+		_led_fade_speed_ms = new_value;
+		LOG_INF("Set LED fade speed to %d milliseconds", _led_fade_speed_ms);
+		/* not waking system thread here, since the LED update thread is looping */
+	}
+	return GOLIOTH_SETTINGS_SUCCESS;
 }
 
-int app_settings_observe(void)
+static enum golioth_settings_status on_led_pct_setting(int32_t new_value, void *arg)
 {
-	int err = golioth_settings_observe(client);
+	int32_t *global_intensity_pct;
+	char color_letter;
 
-	if (err) {
-		LOG_ERR("Failed to observe settings: %d", err);
+	switch ((int) arg) {
+		case LED_R_CB_ARG:
+			global_intensity_pct = &_red_intensity_pct;
+			color_letter = 'R';
+			break;
+		case LED_G_CB_ARG:
+			global_intensity_pct = &_green_intensity_pct;
+			color_letter = 'G';
+			break;
+		case LED_B_CB_ARG:
+			global_intensity_pct = &_blue_intensity_pct;
+			color_letter = 'B';
+			break;
+		default:
+			LOG_ERR("Unexpected LED intensity index value: %i", (int) arg);
+			return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
 	}
-	return err;
+
+	/* Only update if value has changed */
+	if (*global_intensity_pct == new_value) {
+		LOG_DBG("Received %c intensity already matches local value.", color_letter);
+	} else {
+		*global_intensity_pct = new_value;
+		LOG_INF("Set %c intensity to %d percent", color_letter, *global_intensity_pct);
+		/* not waking system thread here, since the LED update thread is looping */
+	}
+
+	return GOLIOTH_SETTINGS_SUCCESS;
 }
 
-int app_settings_register(struct golioth_client *settings_client)
+void check_register_settings_error_and_log(int err, const char *settings_str)
 {
-	int err = golioth_settings_register_callback(settings_client, on_setting);
-	if (err) {
-		LOG_ERR("Failed to register settings callback: %d", err);
+	if (err == 0)
+	{
+		return;
 	}
-	return err;
+
+
+	LOG_ERR("Failed to register settings callback for %s: %d", settings_str, err);
+}
+
+void app_settings_register(struct golioth_client *client)
+{
+	struct golioth_settings *settings = golioth_settings_init(client);
+	int err;
+
+	err = golioth_settings_register_int_with_range(settings,
+							   "LOOP_DELAY_S",
+							   LOOP_DELAY_S_MIN,
+							   LOOP_DELAY_S_MAX,
+							   on_loop_delay_setting,
+							   NULL);
+
+	check_register_settings_error_and_log(err, "LOOP_DELAY_S");
+
+	err = golioth_settings_register_int_with_range(settings,
+							   "LED_FADE_SPEED_MS",
+							   LED_FADE_SPEED_MS_MIN,
+							   LED_FADE_SPEED_MS_MAX,
+							   on_fade_speed_setting,
+							   NULL);
+
+	check_register_settings_error_and_log(err, "LED_FADE_SPEED_MS");
+
+	err = golioth_settings_register_int_with_range(settings,
+							   "RED_INTENSITY_PCT",
+							   0,
+							   100,
+							   on_led_pct_setting,
+							   (void *) LED_R_CB_ARG);
+
+	check_register_settings_error_and_log(err, "RED_INTENSITY_PCT");
+
+	err = golioth_settings_register_int_with_range(settings,
+							   "GREEN_INTENSITY_PCT",
+							   0,
+							   100,
+							   on_led_pct_setting,
+							   (void *) LED_G_CB_ARG);
+
+	check_register_settings_error_and_log(err, "GREEN_INTENSITY_PCT");
+
+	err = golioth_settings_register_int_with_range(settings,
+							   "BLUE_INTENSITY_PCT",
+							   0,
+							   100,
+							   on_led_pct_setting,
+							   (void *) LED_B_CB_ARG);
+
+	check_register_settings_error_and_log(err, "BLUE_INTENSITY_PCT");
 }

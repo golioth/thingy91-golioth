@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __APP_WORK_H__
-#define __APP_WORK_H__
+#ifndef __APP_SENSORS_H__
+#define __APP_SENSORS_H__
 
-#include <net/golioth/system_client.h>
+#include <golioth/client.h>
 
-void app_work_init(struct golioth_client *work_client);
-void app_work_sensor_read(void);
+void app_sensors_set_client(struct golioth_client *sensors_client);
+void app_sensors_read_and_stream(void);
 
 int app_buzzer_init(void);
 void play_funkytown_once(void);
@@ -66,4 +66,4 @@ void play_golioth_once(void);
 
 #define REST 1
 
-#endif /* __APP_WORK_H__ */
+#endif /* __APP_SENSORS_H__ */
