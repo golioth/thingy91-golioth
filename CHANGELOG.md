@@ -7,6 +7,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2024-05-03
+
+### Changed
+
+- Merge changes from
+  [`golioth/reference-design-template@template_v2.2.1`](https://github.com/golioth/reference-design-template/releases/tag/template_v2.2.1).
+  This targets Golioth Firmware SDK v0.13.1.
+- The count of the sensor reads (both up and down) which are recorded using LightDB State will now
+  wrap around when reaching max/min value.
+- LightDB State observations are received as JSON replies from the server instead of CBOR.
+- Turn off unused shells (ADXL372, FLASH, SENSOR) to reduce binary size.
+
 ## [1.1.0] - 2024-01-12
 
 ### Added
