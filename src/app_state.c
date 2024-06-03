@@ -58,10 +58,16 @@ void state_counter_change(void)
 {
 	if (_counter_down > MIN_COUNT) {
 		_counter_down--;
+	} else {
+		_counter_down = MAX_COUNT;
 	}
+
 	if (_counter_up < MAX_COUNT) {
 		_counter_up++;
+	} else {
+		_counter_up = MIN_COUNT;
 	}
+
 	LOG_DBG("D: %d; U: %d", _counter_down, _counter_up);
 	app_state_update_actual();
 }
