@@ -10,6 +10,7 @@ LOG_MODULE_REGISTER(app_sensors, LOG_LEVEL_DBG);
 #include <stdlib.h>
 #include <golioth/client.h>
 #include <golioth/stream.h>
+#include <zcbor_encode.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/device.h>
@@ -241,7 +242,6 @@ void user_led_set(uint8_t state)
 }"
 
 /* Callback for LightDB Stream */
-
 static void async_error_handler(struct golioth_client *client,
 				const struct golioth_response *response,
 				const char *path,

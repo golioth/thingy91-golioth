@@ -7,6 +7,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(thingy91_golioth, LOG_LEVEL_DBG);
 
+#include <app_version.h>
 #include "app_rpc.h"
 #include "app_settings.h"
 #include "app_state.h"
@@ -28,8 +29,9 @@ LOG_MODULE_REGISTER(thingy91_golioth, LOG_LEVEL_DBG);
 #include <modem/modem_info.h>
 #endif
 
-/* Current firmware version; update in prj.conf or via build argument */
-static const char *_current_version = CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION;
+// Current firmware version; update in VERSION
+static const char *_current_version =
+    STRINGIFY(APP_VERSION_MAJOR) "." STRINGIFY(APP_VERSION_MINOR) "." STRINGIFY(APP_PATCHLEVEL);
 
 static struct golioth_client *client;
 K_SEM_DEFINE(connected, 0, 1);
@@ -103,7 +105,7 @@ static void lte_handler(const struct lte_lc_evt *const evt)
 		    (evt->nw_reg_status == LTE_LC_NW_REG_REGISTERED_ROAMING)) {
 
 			/* Change the state of the Internet LED on Ostentus */
-			IF_ENABLED(CONFIG_LIB_OSTENTUS, (led_internet_set(1);));
+			IF_ENABLED(CONFIG_LIB_OSTENTUS, (ostentus_led_internet_set(o_dev, 1);));
 
 			if (!client) {
 				/* Create and start a Golioth Client */
@@ -156,7 +158,7 @@ int main(void)
 
 	LOG_DBG("Start Thingy91 Golioth sample");
 
-	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
+	LOG_INF("Firmware version: %s", _current_version);
 	IF_ENABLED(CONFIG_MODEM_INFO, (log_modem_firmware_version();));
 
 	/* Get system thread id so loop delay change event can wake main */
@@ -176,7 +178,7 @@ int main(void)
 	 */
 
 	LOG_INF("Connecting to LTE, this may take some time...");
-	lte_lc_init_and_connect_async(lte_handler);
+	lte_lc_connect_async(lte_handler);
 
 #else
 	/* If nRF9160 is not used, start the Golioth Client and block until connected */
