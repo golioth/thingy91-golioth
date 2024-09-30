@@ -9,7 +9,7 @@ on:
             version:
                 description: 'Release Version.'
                 required: true
-                default: 'v0.0.0'
+                default: 'template_v0.0.0'
                 type: string
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
         strategy:
             matrix:
               ZEPHYR_SDK: [0.16.3]
-              BOARD: ["thingy91_nrf9160_ns"]
+              BOARD: ["thingy91/nrf9160/ns"]
 
         uses: ./.github/workflows/build_zephyr.yml
         with:

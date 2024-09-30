@@ -5,7 +5,6 @@
  */
 
 #include <zephyr/logging/log.h>
-#include <zephyr/logging/log_ctrl.h>
 LOG_MODULE_REGISTER(app_rpc, LOG_LEVEL_DBG);
 
 #include <golioth/client.h>
@@ -121,12 +120,12 @@ static enum golioth_rpc_status on_play_song(zcbor_state_t *request_params_array,
 		LOG_ERR("'%s' is not an available song on your Thingy91", sbuf);
 
 		ok = zcbor_tstr_put_lit(response_detail_map, "unknown song") &&
-		     zcbor_tstr_put_term(response_detail_map, sbuf);
+		     zcbor_tstr_put_term(response_detail_map, sbuf, sizeof(sbuf));
 		return GOLIOTH_RPC_INVALID_ARGUMENT;
 	}
 
 	ok = zcbor_tstr_put_lit(response_detail_map, "playing song") &&
-	     zcbor_tstr_put_term(response_detail_map, sbuf);
+	     zcbor_tstr_put_term(response_detail_map, sbuf, sizeof(sbuf));
 	return GOLIOTH_RPC_OK;
 }
 
