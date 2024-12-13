@@ -78,7 +78,7 @@ jobs:
       # Run IDs are unique per repo but are reused on re-runs
       - name: Save artifact
         if: inputs.ARTIFACT == true
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build_artifacts_${{ github.run_id }}
           path: |
