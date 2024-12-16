@@ -16,3 +16,9 @@ jobs:
       ZEPHYR_SDK: 0.16.3
       BOARD: thingy91/nrf9160/ns
       ARTIFACT: false
+  test_build_thingy91x:
+    uses: ./.github/workflows/build_zephyr.yml
+    with:
+      ZEPHYR_SDK: 0.16.3
+      BOARD: thingy91x/nrf9151/ns
+      ARTIFACT: false
