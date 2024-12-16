@@ -8,6 +8,7 @@
 LOG_MODULE_REGISTER(thingy91_golioth, LOG_LEVEL_DBG);
 
 #include <app_version.h>
+#include "app_buzzer.h"
 #include "app_rpc.h"
 #include "app_settings.h"
 #include "app_state.h"
