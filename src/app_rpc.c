@@ -13,7 +13,7 @@ LOG_MODULE_REGISTER(app_rpc, LOG_LEVEL_DBG);
 #include <zephyr/sys/reboot.h>
 
 #include <network_info.h>
-#include "app_sensors.h"
+#include "app_buzzer.h"
 #include "app_rpc.h"
 
 static void reboot_work_handler(struct k_work *work)
@@ -90,6 +90,8 @@ static enum golioth_rpc_status on_play_song(zcbor_state_t *request_params_array,
 					    zcbor_state_t *response_detail_map,
 					    void *callback_arg)
 {
+#if defined(CONFIG_BOARD_THINGY91_NRF9160_NS)
+
 	bool ok;
 	char cbor_str[128];
 	struct zcbor_string str_decode = {
@@ -127,6 +129,12 @@ static enum golioth_rpc_status on_play_song(zcbor_state_t *request_params_array,
 	ok = zcbor_tstr_put_lit(response_detail_map, "playing song") &&
 	     zcbor_tstr_put_term(response_detail_map, sbuf, sizeof(sbuf));
 	return GOLIOTH_RPC_OK;
+
+#else
+
+	return GOLIOTH_RPC_UNIMPLEMENTED;
+
+#endif /* CONFIG_BOARD_THINGY91_NRF9160_NS */
 }
 
 static enum golioth_rpc_status on_reboot(zcbor_state_t *request_params_array,
