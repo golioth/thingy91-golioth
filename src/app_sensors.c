@@ -21,9 +21,17 @@ LOG_MODULE_REGISTER(app_sensors, LOG_LEVEL_DBG);
 static struct golioth_client *client;
 
 /* Sensor device structs */
+#if defined(CONFIG_BOARD_THINGY91_NRF9160_NS)
 const struct device *light = DEVICE_DT_GET_ONE(rohm_bh1749);
 const struct device *weather = DEVICE_DT_GET_ONE(bosch_bme680);
 const struct device *accel = DEVICE_DT_GET_ONE(adi_adxl362);
+#endif
+
+#if defined(CONFIG_BOARD_THINGY91X_NRF9151_NS)
+#include <drivers/bme68x_iaq.h>
+const struct device *weather = DEVICE_DT_GET_ONE(bosch_bme680);
+const struct device *accel = DEVICE_DT_GET_ONE(adi_adxl367);
+#endif
 
 /* Callback for LightDB Stream */
 static void async_error_handler(struct golioth_client *client, enum golioth_status status,
@@ -38,6 +46,8 @@ static void async_error_handler(struct golioth_client *client, enum golioth_stat
 
 static enum golioth_status read_light_sensor(zcbor_state_t *zse)
 {
+#if defined(CONFIG_DT_HAS_ROHM_BH1749_ENABLED)
+
 	struct sensor_value BH1749_RED;
 	struct sensor_value BH1749_GREEN;
 	struct sensor_value BH1749_BLUE;
@@ -99,15 +109,78 @@ static enum golioth_status read_light_sensor(zcbor_state_t *zse)
 	}
 
 	return GOLIOTH_OK;
+
+#else
+
+	return GOLIOTH_OK;
+
+#endif /* CONFIG_DT_HAS_ROHM_BH1749_ENABLED */
 }
 
+
+/* This function assume that sensor_sample_fetch() has already been run */
+static enum golioth_status process_gas_sensor(zcbor_state_t *zse)
+{
+#if defined(CONFIG_BOARD_THINGY91_NRF9160_NS)
+
+	struct sensor_value gas_res;
+	bool ok;
+
+	sensor_channel_get(weather, SENSOR_CHAN_GAS_RES, &gas_res);
+	LOG_DBG("G: %d.%06d", gas_res.val1, gas_res.val2);
+
+	ok = zcbor_tstr_put_lit(zse, "gas") &&
+	     zcbor_float64_put(zse, sensor_value_to_double(&gas_res));
+
+	if (!ok)
+	{
+		LOG_ERR("ZCBOR unable to encode gas data");
+		return GOLIOTH_ERR_QUEUE_FULL;
+	}
+
+	return GOLIOTH_OK;
+
+#elif defined(CONFIG_BOARD_THINGY91X_NRF9151_NS)
+
+	struct sensor_value gas_iaq = { 0 };
+	struct sensor_value gas_co2 = { 0 };
+	struct sensor_value gas_voc = { 0 };
+	bool ok;
+
+	sensor_channel_get(weather, SENSOR_CHAN_IAQ, &gas_iaq);
+	sensor_channel_get(weather, SENSOR_CHAN_CO2, &gas_co2);
+	sensor_channel_get(weather, SENSOR_CHAN_VOC, &gas_voc);
+	LOG_DBG("IAQ: %d; CO2: %d.%06d; VOC: %d.%06d",
+		gas_iaq.val1, gas_co2.val1, gas_co2.val2, gas_voc.val1, gas_voc.val2);
+
+	ok = zcbor_tstr_put_lit(zse, "iaq") &&
+	     zcbor_int32_put(zse, gas_iaq.val1) &&
+	     zcbor_tstr_put_lit(zse, "co2") &&
+	     zcbor_float64_put(zse, sensor_value_to_double(&gas_co2)) &&
+	     zcbor_tstr_put_lit(zse, "voc") &&
+	     zcbor_float64_put(zse, sensor_value_to_double(&gas_voc));
+
+	if (!ok)
+	{
+		LOG_ERR("ZCBOR unable to encode gas data");
+		return GOLIOTH_ERR_QUEUE_FULL;
+	}
+
+	return GOLIOTH_OK;
+
+#else
+
+	return GOLIOTH_OK;
+
+#endif
+}
 static enum golioth_status read_weather_sensor(zcbor_state_t *zse)
 {
 	struct sensor_value temp;
 	struct sensor_value press;
 	struct sensor_value humidity;
-	struct sensor_value gas_res;
 	bool ok;
+	enum golioth_status status;
 
 	/* BME680 */
 	int err = sensor_sample_fetch(weather);
@@ -118,9 +191,8 @@ static enum golioth_status read_weather_sensor(zcbor_state_t *zse)
 	sensor_channel_get(weather, SENSOR_CHAN_AMBIENT_TEMP, &temp);
 	sensor_channel_get(weather, SENSOR_CHAN_PRESS, &press);
 	sensor_channel_get(weather, SENSOR_CHAN_HUMIDITY, &humidity);
-	sensor_channel_get(weather, SENSOR_CHAN_GAS_RES, &gas_res);
-	LOG_DBG("T: %d.%06d; P: %d.%06d; H: %d.%06d; G: %d.%06d", temp.val1, abs(temp.val2),
-		press.val1, press.val2, humidity.val1, humidity.val2, gas_res.val1, gas_res.val2);
+	LOG_DBG("T: %d.%06d; P: %d.%06d; H: %d.%06d", temp.val1, abs(temp.val2), press.val1,
+		press.val2, humidity.val1, humidity.val2);
 
 	ok = zcbor_tstr_put_lit(zse, "weather") && zcbor_map_start_encode(zse, 4);
 	if (!ok)
@@ -134,13 +206,17 @@ static enum golioth_status read_weather_sensor(zcbor_state_t *zse)
 	     zcbor_tstr_put_lit(zse, "pre") &&
 	     zcbor_float64_put(zse, sensor_value_to_double(&press)) &&
 	     zcbor_tstr_put_lit(zse, "hum") &&
-	     zcbor_float64_put(zse, sensor_value_to_double(&humidity)) &&
-	     zcbor_tstr_put_lit(zse, "gas") &&
-	     zcbor_float64_put(zse, sensor_value_to_double(&gas_res));
+	     zcbor_float64_put(zse, sensor_value_to_double(&humidity));
 	if (!ok)
 	{
 		LOG_ERR("ZCBOR failed to encode weather data");
 		return GOLIOTH_ERR_QUEUE_FULL;
+	}
+
+	status = process_gas_sensor(zse);
+	if (status != GOLIOTH_OK)
+	{
+		return status;
 	}
 
 	ok = zcbor_map_end_encode(zse, 4);
