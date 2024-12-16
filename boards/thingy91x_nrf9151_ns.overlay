@@ -1,0 +1,14 @@
+/ {
+	aliases {
+		sw1 = &button0;
+	};
+
+};
+
+&bme680 {
+	status = "okay";
+};
+
+&accel {
+	status = "okay";
+};
