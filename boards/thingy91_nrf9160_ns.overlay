@@ -1,9 +1,5 @@
 / {
 	aliases {
-		click-uart = &uart1;
-		click-i2c = &i2c2;
-		golioth-led = &green_led;
-		user-led = &blue_led;
 		sw1 = &button0;
 		buzzer-pwm = &buzzer;
 	};

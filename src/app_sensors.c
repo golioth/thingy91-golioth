@@ -20,20 +20,10 @@ LOG_MODULE_REGISTER(app_sensors, LOG_LEVEL_DBG);
 
 static struct golioth_client *client;
 
-static const struct gpio_dt_spec user_led = GPIO_DT_SPEC_GET(DT_ALIAS(user_led), gpios);
-
 /* Sensor device structs */
 const struct device *light = DEVICE_DT_GET_ONE(rohm_bh1749);
 const struct device *weather = DEVICE_DT_GET_ONE(bosch_bme680);
 const struct device *accel = DEVICE_DT_GET_ONE(adi_adxl362);
-
-/* Set (unset) LED indicators for user action */
-void user_led_set(uint8_t state)
-{
-	uint8_t pin_state = state ? 1 : 0;
-	/* Turn on Golioth logo LED once connected */
-	gpio_pin_set_dt(&user_led, pin_state);
-}
 
 /* Callback for LightDB Stream */
 static void async_error_handler(struct golioth_client *client, enum golioth_status status,

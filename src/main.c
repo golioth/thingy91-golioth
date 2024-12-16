@@ -39,14 +39,8 @@ K_SEM_DEFINE(connected, 0, 1);
 
 static k_tid_t _system_thread;
 
-#if DT_NODE_EXISTS(DT_ALIAS(golioth_led))
-static const struct gpio_dt_spec golioth_led = GPIO_DT_SPEC_GET(DT_ALIAS(golioth_led), gpios);
-#endif /* DT_NODE_EXISTS(DT_ALIAS(golioth_led)) */
 static const struct gpio_dt_spec user_btn = GPIO_DT_SPEC_GET(DT_ALIAS(sw1), gpios);
 static struct gpio_callback button_cb_data;
-
-/* forward declarations */
-void golioth_connection_led_set(uint8_t state);
 
 void wake_system_thread(void)
 {
@@ -61,7 +55,7 @@ static void on_client_event(struct golioth_client *client,
 
 	if (is_connected) {
 		k_sem_give(&connected);
-		golioth_connection_led_set(1);
+		app_led_pwm_init();
 	}
 	LOG_INF("Golioth client %s", is_connected ? "connected" : "disconnected");
 }
@@ -147,12 +141,6 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t
 	k_wakeup(_system_thread);
 }
 
-/* Set (unset) LED indicators for active Golioth connection */
-void golioth_connection_led_set(uint8_t state)
-{
-	app_led_pwm_init(); /* Once the connection is available, fire up the LED pwms */
-}
-
 int main(void)
 {
 	int err;
@@ -164,14 +152,6 @@ int main(void)
 
 	/* Get system thread id so loop delay change event can wake main */
 	_system_thread = k_current_get();
-
-#if DT_NODE_EXISTS(DT_ALIAS(golioth_led))
-	/* Initialize Golioth logo LED */
-	err = gpio_pin_configure_dt(&golioth_led, GPIO_OUTPUT_INACTIVE);
-	if (err) {
-		LOG_ERR("Unable to configure LED for Golioth Logo");
-	}
-#endif /* #if DT_NODE_EXISTS(DT_ALIAS(golioth_led)) */
 
 #if defined(CONFIG_SOC_SERIES_NRF91X)
 	/* Start LTE asynchronously if the nRF9160 is used.
