@@ -4,6 +4,9 @@
 manifest:
   version: 0.8
 
+  group-filter:
+    - +bsec
+
   projects:
     - name: golioth
       path: modules/lib/golioth-firmware-sdk
@@ -17,6 +20,8 @@ manifest:
         name-allowlist:
           - nrf
           - zephyr
+          - bme68x
+          - bsec
           - cmsis
           - hal_nordic
           - mbedtls
