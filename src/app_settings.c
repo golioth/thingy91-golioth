@@ -21,7 +21,7 @@ int period = 100000; /* should be 100 uSec */
 
 static int32_t _loop_delay_s = 60;
 #define LOOP_DELAY_S_MAX 43200
-#define LOOP_DELAY_S_MIN 0
+#define LOOP_DELAY_S_MIN 1
 #define LED_FADE_SPEED_MS_MAX 10000
 #define LED_FADE_SPEED_MS_MIN 500
 
