@@ -256,11 +256,16 @@ void app_sensors_read_and_stream(void)
 
 	size_t cbor_size = zse->payload - (const uint8_t *) cbor_buf;
 
-	/* Send to LightDB Stream on "sensor" endpoint */
-	err = golioth_stream_set_async(client, "sensor", GOLIOTH_CONTENT_TYPE_CBOR, cbor_buf,
-				       cbor_size, async_error_handler, NULL);
-	if (err) {
-		LOG_ERR("Failed to send sensor data to Golioth: %d", err);
+	/* Only stream sensor data if connected */
+	if (golioth_client_is_connected(client)) {
+		/* Send to LightDB Stream on "sensor" endpoint */
+		err = golioth_stream_set_async(client, "sensor", GOLIOTH_CONTENT_TYPE_CBOR, cbor_buf,
+					cbor_size, async_error_handler, NULL);
+		if (err) {
+			LOG_ERR("Failed to send sensor data to Golioth: %d", err);
+		}
+	} else {
+		LOG_DBG("No connection available, skipping sending data to Golioth");
 	}
 }
 
