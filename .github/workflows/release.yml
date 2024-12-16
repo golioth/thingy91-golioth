@@ -17,7 +17,7 @@ jobs:
         strategy:
             matrix:
               ZEPHYR_SDK: [0.16.3]
-              BOARD: ["thingy91/nrf9160/ns"]
+              BOARD: ["thingy91/nrf9160/ns", "thingy91x/nrf9151/ns"]
 
         uses: ./.github/workflows/build_zephyr.yml
         with:
