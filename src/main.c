@@ -20,7 +20,7 @@ LOG_MODULE_REGISTER(thingy91_golioth, LOG_LEVEL_DBG);
 #include <samples/common/sample_credentials.h>
 #include <zephyr/kernel.h>
 
-#ifdef CONFIG_SOC_NRF9160
+#if defined(CONFIG_SOC_SERIES_NRF91X)
 #include <modem/lte_lc.h>
 #endif
 
@@ -96,7 +96,7 @@ static void start_golioth_client(void)
 	app_rpc_register(client);
 }
 
-#ifdef CONFIG_SOC_NRF9160
+#if defined(CONFIG_SOC_SERIES_NRF91X)
 
 static void lte_handler(const struct lte_lc_evt *const evt)
 {
@@ -173,7 +173,7 @@ int main(void)
 	}
 #endif /* #if DT_NODE_EXISTS(DT_ALIAS(golioth_led)) */
 
-#ifdef CONFIG_SOC_NRF9160
+#if defined(CONFIG_SOC_SERIES_NRF91X)
 	/* Start LTE asynchronously if the nRF9160 is used.
 	 * Golioth Client will start automatically when LTE connects
 	 */
