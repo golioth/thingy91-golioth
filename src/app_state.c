@@ -42,12 +42,13 @@ const char *endp_list[COUNTER_DIR_TOTAL] = {
 static struct golioth_client *client;
 
 static void async_handler(struct golioth_client *client,
-				       const struct golioth_response *response,
-				       const char *path,
-				       void *arg)
+			  enum golioth_status status,
+			  const struct golioth_coap_rsp_code *coap_rsp_code,
+			  const char *path,
+			  void *arg)
 {
-	if (response->status != GOLIOTH_OK) {
-		LOG_WRN("Failed to set state: %d", response->status);
+	if (status != GOLIOTH_OK) {
+		LOG_WRN("Failed to set state: %d", status);
 		return;
 	}
 
@@ -118,11 +119,9 @@ static int app_state_update_actual(void)
 	return err;
 }
 
-static void app_state_desired_handler(struct golioth_client *client,
-				      const struct golioth_response *response,
-				      const char *path,
-				      const uint8_t *payload,
-				      size_t payload_size,
+static void app_state_desired_handler(struct golioth_client *client, enum golioth_status status,
+				      const struct golioth_coap_rsp_code *coap_rsp_code,
+				      const char *path, const uint8_t *payload, size_t payload_size,
 				      void *arg)
 {
 	int err = 0;
@@ -143,10 +142,8 @@ static void app_state_desired_handler(struct golioth_client *client,
 
 	const char *endp_str = endp_list[direction];
 
-	if (response->status != GOLIOTH_OK) {
-		LOG_ERR("Failed to receive '%s' endpoint: %d",
-			endp_str,
-			response->status);
+	if (status != GOLIOTH_OK) {
+		LOG_ERR("Failed to receive '%s' endpoint: %d", endp_str, status);
 		return;
 	}
 
