@@ -9,7 +9,7 @@ Overview
 ********
 
 This repository highlights various aspects of the Golioth platform on the Nordic
-Thingy91 device.
+Thingy91 and Thingy91x devices.
 
 This repo is based on the Golioth `Reference Design Template`_.
 
@@ -64,10 +64,24 @@ to this build. Then run the following commands to build and program the firmware
    You must perform a pristine build (use ``-p`` or remove the ``build`` directory)
    after changing the firmware version number in the ``VERSION`` file for the change to take effect.
 
+Build for Thingy91
+==================
+
 .. code-block:: text
 
-   $ (.venv) west build -p -b thingy91/nrf9160/ns --sysbuild app
-   $ (.venv) west flash
+   west build -p -b thingy91/nrf9160/ns --sysbuild app
+   west flash
+
+Build for Thingy91x
+===================
+
+.. code-block:: text
+
+   west build -p -b thingy91x/nrf9151/ns --sysbuild app
+   west flash --erase
+
+Provision the device
+********************
 
 Configure PSK-ID and PSK using the device shell based on your Golioth
 credentials and reboot:
@@ -161,14 +175,94 @@ The following RPCs can be initiated in the Remote Procedure Call menu of the
    * ``4``: ``LOG_LEVEL_DBG``
 
 ``play_song``
-   This device can play different songs when the ``play_song`` RPC is sent with
-   one of the following parameters:
+   The Thingy91 can play different songs when the ``play_song`` RPC is sent with one of the
+   following parameters:
 
    * ``beep``: Play a short 1 kHz tone. Also plays when button is pressed.
    * ``funkytown``: Play the main tune from the 70s classic.
    * ``mario``: Itsa me...a classic chiptune song!
    * ``golioth``: A short theme for Golioth. Also plays on device boot.
 
+   Note that the Thingy91x does not have a buzzer and will return an "unimplemented" error code
+   which this method is called.
+
+Time-Series Stream data
+=======================
+
+Sensor data is sent to Golioth based on the ``LOOP_DELAY_S`` setting. Sensor vary between the
+supported boards, so different readings are available based on your hardware. Data may be viewed in
+the `Golioth Console`_ by viewing the LightDB Stream tab of the device, or the in the Project's
+Monitor section on the left sidebar.
+
+Below you will find sample data for the devices supported by this application.
+
+Thingy91
+^^^^^^^^
+
+.. code-block:: json
+
+   {
+      "sensor": {
+         "accel": {
+            "x": 0.343232,
+            "y": -0.156906,
+            "z": -9.257477
+         },
+         "light": {
+            "blue": 23,
+            "green": 56,
+            "ir": 6,
+            "red": 29
+         },
+         "weather": {
+            "gas": 51344,
+            "hum": 35.593,
+            "pre": 98.548,
+            "tem": 22.62
+         }
+      }
+   }
+
+Thingy91x
+^^^^^^^^^
+
+.. code-block:: json
+
+   {
+      "sensor": {
+         "accel": {
+            "x": -0.008085,
+            "y": 0.0294,
+            "z": -0.803845
+         },
+         "weather": {
+            "co2": 467.279876,
+            "hum": 30.058282,
+            "iaq": 35,
+            "pre": 98511,
+            "tem": 20.995311,
+            "voc": 0.43105
+         }
+      }
+   }
+
+Stateful Data (LightDB State)
+=============================
+
+Up-counting and down-counting timer readings are periodically sent to the ``actual`` path of the
+LightDB Stream service. The frequency that these reading change is based on the ``LOOP_DELAY_S``
+setting.
+
+* ``desired`` values may be changed from the cloud side. The device will recognize these, validate
+  them for [0..9999] bounding, and then reset these endpoints to ``-1``. Changes may be made while
+  the device is not connected and will persist until the next time a connection is established.
+
+* ``actual`` values will be updated by the device whenever a valid value is
+  received from the ``desired`` endpoints. The cloud may read the ``state``
+  endpoints to determine device status, but only the device should ever write to
+  the ``state`` endpoints.
+
 .. _Reference Design Template: https://github.com/golioth/reference-design-template
+.. _Pipelines: https://docs.golioth.io/data-routing
 .. _Golioth Console: https://console.golioth.io
 .. _golioth-zephyr-boards: https://github.com/golioth/golioth-zephyr-boards
