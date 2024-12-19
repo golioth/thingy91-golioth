@@ -10,6 +10,6 @@
 #include <golioth/client.h>
 
 int app_state_observe(struct golioth_client *state_client);
-void state_counter_change(void);
+int app_state_counter_change(void);
 
 #endif /* __APP_STATE_H__ */
