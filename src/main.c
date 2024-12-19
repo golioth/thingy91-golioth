@@ -202,7 +202,7 @@ int main(void)
 
 	while (true) {
 		app_sensors_read_and_stream();
-		state_counter_change();
+		app_state_counter_change();
 
 		k_sleep(K_SECONDS(get_loop_delay_s()));
 	}
