@@ -9,35 +9,21 @@ LOG_MODULE_REGISTER(app_state, LOG_LEVEL_DBG);
 
 #include <golioth/client.h>
 #include <golioth/lightdb_state.h>
+#include <zcbor_decode.h>
+#include <zcbor_encode.h>
+#include <zephyr/data/json.h>
 #include <zephyr/kernel.h>
 
-#include "app_state.h"
+#define APP_STATE_DESIRED_PATH "desired"
+#define APP_STATE_ACTUAL_PATH  "state"
 
-#define DEVICE_STATE_DEFAULT "-1"
-#define DEVICE_STATE_FMT "{\"counter_up\":%d,\"counter_down\":%d}"
-#define MAX_COUNT	 10000
-#define MIN_COUNT	 0
-
-static int app_state_update_actual(void);
-
-int32_t _counter_up = MIN_COUNT;
-int32_t _counter_down = MAX_COUNT - 1;
-
-enum counter_dir {
-	COUNTER_UP,
-	COUNTER_DN,
-	COUNTER_DIR_TOTAL
-
-};
-
-#define APP_STATE_DESIRED_UP_ENDP "desired/counter_up"
-#define APP_STATE_DESIRED_DN_ENDP "desired/counter_down"
-#define APP_STATE_ACTUAL_ENDP	  "state"
-
-const char *endp_list[COUNTER_DIR_TOTAL] = {
-	APP_STATE_DESIRED_UP_ENDP,
-	APP_STATE_DESIRED_DN_ENDP
-};
+K_MUTEX_DEFINE(counter_mutex);
+#define COUNTER_UP_STRING "counter_up"
+#define COUNTER_DN_STRING "counter_down"
+#define COUNTER_MAX 9999
+uint16_t _counter_up = COUNTER_MAX;
+uint16_t _counter_dn = 0;
+bool _initial_update_pending = true;
 
 static struct golioth_client *client;
 
@@ -55,68 +41,147 @@ static void async_handler(struct golioth_client *client,
 	LOG_DBG("State successfully set");
 }
 
-void state_counter_change(void)
+static bool encode_state(zcbor_state_t *zse, int32_t up, int32_t dn)
 {
-	if (_counter_down > MIN_COUNT) {
-		_counter_down--;
-	} else {
-		_counter_down = MAX_COUNT;
-	}
+	bool ok = zcbor_map_start_encode(zse, 2) &&
+	          zcbor_tstr_put_lit(zse, COUNTER_UP_STRING) &&
+	          zcbor_int32_put(zse, up) &&
+	          zcbor_tstr_put_lit(zse, COUNTER_DN_STRING) &&
+	          zcbor_int32_put(zse, dn) &&
+	          zcbor_map_end_encode(zse, 2);
 
-	if (_counter_up < MAX_COUNT) {
-		_counter_up++;
-	} else {
-		_counter_up = MIN_COUNT;
-	}
-
-	LOG_DBG("D: %d; U: %d", _counter_down, _counter_up);
-	app_state_update_actual();
+	return ok;
 }
 
-static int app_state_reset_desired(enum counter_dir counter_idx)
+int app_state_reset_desired(void)
 {
-	if ((counter_idx < 0) || (counter_idx > COUNTER_DIR_TOTAL)) {
-		LOG_ERR("Counter index out of bounds: %d", counter_idx);
-		return -EFAULT;
+	bool ok;
+	char cbor_buf[64];
+	ZCBOR_STATE_E(zse, 1, cbor_buf, sizeof(cbor_buf), 1);
+
+	ok = encode_state(zse, -1, -1);
+
+	if (!ok)
+	{
+		LOG_ERR("'%s' reset failed while try to encode CBOR.", APP_STATE_DESIRED_PATH);
+		return -ENOMEM;
 	}
 
-	LOG_INF("Resetting \"%s\" LightDB State path to default.", endp_list[counter_idx]);
+	LOG_INF("Resetting \"%s\" LightDB State endpoint to defaults.", APP_STATE_DESIRED_PATH);
 
-	int err;
-	err = golioth_lightdb_set_async(client,
-					endp_list[counter_idx],
-					GOLIOTH_CONTENT_TYPE_JSON,
-					DEVICE_STATE_DEFAULT,
-					strlen(DEVICE_STATE_DEFAULT),
-					async_handler,
-					NULL);
+	size_t cbor_size = zse->payload - (const uint8_t *) cbor_buf;
+
+	int err = golioth_lightdb_set_async(client,
+					    APP_STATE_DESIRED_PATH,
+					    GOLIOTH_CONTENT_TYPE_CBOR,
+					    cbor_buf,
+					    cbor_size,
+					    async_handler,
+					    NULL);
 	if (err) {
 		LOG_ERR("Unable to write to LightDB State: %d", err);
+	}
+
+	return err;
+}
+
+int app_state_update_actual(void)
+{
+	bool ok;
+	char cbor_buf[64];
+	ZCBOR_STATE_E(zse, 1, cbor_buf, sizeof(cbor_buf), 1);
+
+	k_mutex_lock(&counter_mutex, K_FOREVER);
+	ok = encode_state(zse, (int32_t) _counter_up, (int32_t) _counter_dn);
+	k_mutex_unlock(&counter_mutex);
+
+	if (!ok)
+	{
+		LOG_ERR("CBOR: failed to encode actual state");
+		return -ENOMEM;
+	}
+
+	size_t cbor_size = zse->payload - (const uint8_t *) cbor_buf;
+	int err = -ENETDOWN;
+
+	if (golioth_client_is_connected(client))
+	{
+		err = golioth_lightdb_set_async(client,
+						APP_STATE_ACTUAL_PATH,
+						GOLIOTH_CONTENT_TYPE_CBOR,
+						cbor_buf,
+						cbor_size,
+						async_handler,
+						NULL);
+
+		if (err) {
+			LOG_ERR("Unable to send actual state to LightDB State: %d", err);
+		}
+		else if (_initial_update_pending)
+		{
+			_initial_update_pending = false;
+		}
 	}
 	return err;
 }
 
-static int app_state_update_actual(void)
+/// Match a given string with ZCBOR decoded string
+///
+/// We don't know which order the key/value pairs will be in CBOR. This function takes a string to
+/// compare, as well as both key/value pairs. It returns a pointer to the value whose key is a
+/// match. If there is no match, NULL will be returned.
+///
+/// @param to_match String to match against the received key
+/// @param zstr0    Pointer to first ZCBOR string
+/// @param v0       Pointer to first ZCBOR value
+/// @param zstr1    Pointer to second ZCBOR string
+/// @param v1       Pointer to second ZCBOR value
+///
+/// @retval Pointer to int32_t value for the matched key or NULL
+static int32_t *find_matching_pointer(const char *to_match, struct zcbor_string *zstr0, int32_t *v0,
+				      struct zcbor_string *zstr1, int32_t *v1)
 {
-
-	char sbuf[sizeof(DEVICE_STATE_FMT) + 22]; /* space for two int32_t values */
-
-	snprintk(sbuf, sizeof(sbuf), DEVICE_STATE_FMT, _counter_up, _counter_down);
-
-	int err;
-
-	err = golioth_lightdb_set_async(client,
-					APP_STATE_ACTUAL_ENDP,
-					GOLIOTH_CONTENT_TYPE_JSON,
-					sbuf,
-					strlen(sbuf),
-					async_handler,
-					NULL);
-
-	if (err) {
-		LOG_ERR("Unable to write to LightDB State: %d", err);
+	if ((strlen(to_match) == zstr0->len) &&
+	    (strncmp(to_match, zstr0->value, zstr0->len) == 0)) {
+		return v0;
 	}
-	return err;
+
+	if ((strlen(to_match) == zstr1->len) && (strncmp(to_match, zstr1->value, zstr1->len) == 0))
+	{
+		return v1;
+	}
+
+	return NULL;
+}
+
+/// Validate and store received value
+///
+/// @param new_value Value received in CBOR packet
+/// @param stored_value Pointer for storing validated value
+/// @param str String associated with stored value for use in logging
+static void process_desired_value(int32_t new_value, uint16_t *stored_value, const char *str)
+{
+	if (new_value == -1)
+	{
+		return;
+	}
+
+	if ((new_value < 0) || (new_value > COUNTER_MAX)) {
+		LOG_ERR("'%s' server value out of bounds: %u (expected 0..%u)", str, new_value,
+			COUNTER_MAX);
+		return;
+	}
+
+	if (new_value == *stored_value)
+	{
+		LOG_INF("'%s' server value matches current: %u; ignoring.", str, new_value);
+
+	}
+	else
+	{
+		*stored_value = new_value;
+		LOG_INF("Using new '%s' value from server: %u", str, *stored_value);
+	}
 }
 
 static void app_state_desired_handler(struct golioth_client *client, enum golioth_status status,
@@ -124,111 +189,107 @@ static void app_state_desired_handler(struct golioth_client *client, enum goliot
 				      const char *path, const uint8_t *payload, size_t payload_size,
 				      void *arg)
 {
-	int err = 0;
-	int direction = (enum counter_dir)arg;
-	int32_t *cur_counter;
-
-	switch (direction) {
-		case COUNTER_UP:
-			cur_counter = &_counter_up;
-			break;
-		case COUNTER_DN:
-			cur_counter = &_counter_down;
-			break;
-		default:
-			LOG_ERR("User arg out of bounds: %d", direction);
-			return;
-	}
-
-	const char *endp_str = endp_list[direction];
-
 	if (status != GOLIOTH_OK) {
-		LOG_ERR("Failed to receive '%s' endpoint: %d", endp_str, status);
+		LOG_ERR("Failed to receive LightDB State '%s' path: %d", APP_STATE_DESIRED_PATH,
+			status);
 		return;
 	}
 
-	LOG_HEXDUMP_DBG(payload, payload_size, endp_str);
-
-	/* Smallest int32_t is -2,147,483,647 -> 11 digits */
-	if (payload_size > 11)
+	if ((payload_size == 1) && (payload[0] == 0xf6))
 	{
-		LOG_ERR("Payload too large: %d", payload_size);
-		goto reset_desired;
+		/* This is CBOR for NULL */
+		LOG_WRN("'%s' path is NULL, resetting.", APP_STATE_DESIRED_PATH);
+		goto reset_to_default;
 	}
 
-	/* 11 digits for int32_t + 1 digit for null terminator */
-	char payload_str[12] = {0};
-	memcpy(payload_str, payload, MIN(sizeof(payload_str) - 1, payload_size));
+	ZCBOR_STATE_D(zsd, 2, payload, payload_size, 1, 0);
 
-	if (strcmp(DEVICE_STATE_DEFAULT, payload_str) == 0) {
-		/* Received the default desired value, do nothing */
+	struct zcbor_string key0;
+	struct zcbor_string key1;
+	int32_t value0;
+	int32_t value1;
+
+	int ok = zcbor_map_start_decode(zsd) &&
+		 zcbor_tstr_decode(zsd, &key0) &&
+		 zcbor_int32_decode(zsd, &value0) &&
+		 zcbor_tstr_decode(zsd, &key1) &&
+		 zcbor_int32_decode(zsd, &value1) &&
+		 zcbor_map_end_decode(zsd);
+
+	if (!ok)
+	{
+		LOG_ERR("Decoding failure, deleting path: '%s'", APP_STATE_DESIRED_PATH);
+		golioth_lightdb_delete_async(client, APP_STATE_DESIRED_PATH, async_handler, NULL);
 		return;
 	}
 
-	errno = 0;
-	char *end;
+	int32_t *up = find_matching_pointer(COUNTER_UP_STRING, &key0, &value0, &key1, &value1);
+	int32_t *dn = find_matching_pointer(COUNTER_DN_STRING, &key0, &value0, &key1, &value1);
 
-	int32_t new_value = strtol(payload_str, &end, 10);
-	if ((errno != 0) || (end == payload_str)) {
-		LOG_ERR("Error converting string to number: %s", payload_str);
-		goto reset_desired;
+	if (!up || !dn)
+	{
+		LOG_ERR("Did not find expected keys, resetting '%s'", APP_STATE_DESIRED_PATH);
+		goto reset_to_default;
 	}
 
-	LOG_INF("Got payload for %s: %d", endp_str, new_value);
-
-	if ((new_value < MIN_COUNT) || (new_value > MAX_COUNT)) {
-		LOG_ERR("New %s value out of bounds: %d", endp_str, new_value);
-		goto reset_desired;
+	if ((*up == -1) && (*dn == -1))
+	{
+		/* No changes hae been requested; do nothing */
+		goto check_initial_update;
 	}
 
-	if (new_value == *cur_counter) {
-		LOG_INF("Stored value matches %s", endp_str);
-		goto reset_desired;
+	k_mutex_lock(&counter_mutex, K_FOREVER);
+	process_desired_value(*up, &_counter_up, COUNTER_UP_STRING);
+	process_desired_value(*dn, &_counter_dn, COUNTER_DN_STRING);
+	k_mutex_unlock(&counter_mutex);
+
+	app_state_update_actual();
+
+reset_to_default:
+	app_state_reset_desired();
+
+check_initial_update:
+	if (_initial_update_pending)
+	{
+		/* Ensure that actual state is sent at least once after power up */
+		app_state_update_actual();
+	}
+}
+
+int app_state_counter_change(void)
+{
+	k_mutex_lock(&counter_mutex, K_FOREVER);
+
+	if (++_counter_up > COUNTER_MAX)
+	{
+		_counter_up = 0;
 	}
 
-	*cur_counter = new_value;
-	LOG_INF("Storing %d as new value for %s", new_value, endp_str);
-	err = app_state_update_actual();
-	if (err) {
-		LOG_ERR("Failed to update cloud state: %d", err);
+	if (--_counter_dn > COUNTER_MAX)
+	{
+		_counter_dn = COUNTER_MAX;
 	}
 
-reset_desired:
-	app_state_reset_desired(direction);
-	return;
+	LOG_DBG("D: %d; U: %d", _counter_dn, _counter_up);
+
+	k_mutex_unlock(&counter_mutex);
+
+	return app_state_update_actual();
 }
 
 int app_state_observe(struct golioth_client *state_client)
 {
-	int err;
-
 	client = state_client;
 
-	err = golioth_lightdb_observe_async(client,
-					    APP_STATE_DESIRED_UP_ENDP,
-					    GOLIOTH_CONTENT_TYPE_JSON,
-					    app_state_desired_handler,
-					    (void *) COUNTER_UP);
+	int err = golioth_lightdb_observe_async(client,
+						APP_STATE_DESIRED_PATH,
+						GOLIOTH_CONTENT_TYPE_CBOR,
+						app_state_desired_handler,
+						NULL);
 	if (err) {
 		LOG_WRN("failed to observe lightdb path: %d", err);
 		return err;
 	}
-
-	err = golioth_lightdb_observe_async(client,
-					    APP_STATE_DESIRED_DN_ENDP,
-					    GOLIOTH_CONTENT_TYPE_JSON,
-					    app_state_desired_handler,
-					    (void *) COUNTER_DN);
-	if (err) {
-		LOG_WRN("failed to observe lightdb path: %d", err);
-		return err;
-	}
-
-	/* This will only run once. It updates the actual state of the device
-	 * with the Golioth servers. Future updates will be sent whenever
-	 * changes occur.
-	 */
-	err = app_state_update_actual();
 
 	return err;
 }
