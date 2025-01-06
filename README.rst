@@ -31,7 +31,7 @@ Install the Python virtual environment (recommended)
    mkdir thingy91-golioth
    python -m venv thingy91-golioth/.venv
    source thingy91-golioth/.venv/bin/activate
-   pip install wheel west
+   pip install wheel west ecdsa
 
 Use ``west`` to initialize and install
 ======================================
