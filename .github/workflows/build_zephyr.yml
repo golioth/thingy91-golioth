@@ -13,7 +13,7 @@ on:
       BOARD:
         required: true
         type: string
-        default: thingy91_nrf9160_ns
+        default: thingy91/nrf9160/ns
       ARTIFACT:
         required: true
         type: boolean
@@ -82,6 +82,10 @@ jobs:
           mv merged.hex                   ./artifacts/${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ steps.nicename.outputs.BOARD_NICENAME }}_full.hex
           mv app/zephyr/zephyr.signed.bin ./artifacts/${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ steps.nicename.outputs.BOARD_NICENAME }}_update.bin
           mv app/zephyr/zephyr.elf        ./artifacts/${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ steps.nicename.outputs.BOARD_NICENAME }}.elf
+
+          if [[ "${{ inputs.BOARD }}" == "thingy91/nrf9160/ns" ]]; then
+            mv app/zephyr/zephyr.signed.hex ./artifacts/${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ steps.nicename.outputs.BOARD_NICENAME }}_mcuboot.hex
+          fi
 
       # Run IDs are unique per repo but are reused on re-runs
       - name: Save artifact
