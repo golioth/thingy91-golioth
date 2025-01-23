@@ -262,7 +262,28 @@ setting.
   endpoints to determine device status, but only the device should ever write to
   the ``state`` endpoints.
 
+OTA Firmware Update
+*******************
+
+This application includes the ability to perform Over-the-Air (OTA) firmware updates:
+
+1. Update the version number in the `VERSION` file and perform a pristine (important) build to
+   incorporate the version change.
+2. Upload the `build/app/zephyr/zephyr.signed.bin` file as a Package for your Golioth project.
+
+   - Use either `thingy91` or `thingy91x` as the package name, depending on which board the update
+     file was built for. (These package names were configured in this repository's board `.conf`
+     files.)
+   - Use the same version number from step 1.
+
+3. Create a Cohort for your device type (thingy91 or thingy91x)
+4. Create a Deployment for your Cohort using the package name and version number from step 2.
+5. Devices in your Cohort will automatically upgrade to the most recently deployed firmware.
+
+Visit `the Golioth Docs OTA Firmware Upgrade page`_ for more info.
+
 .. _Reference Design Template: https://github.com/golioth/reference-design-template
 .. _Pipelines: https://docs.golioth.io/data-routing
 .. _Golioth Console: https://console.golioth.io
 .. _golioth-zephyr-boards: https://github.com/golioth/golioth-zephyr-boards
+.. _the Golioth Docs OTA Firmware Upgrade page: https://docs.golioth.io/firmware/golioth-firmware-sdk/firmware-upgrade/firmware-upgrade
