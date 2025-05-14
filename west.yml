@@ -10,7 +10,7 @@ manifest:
   projects:
     - name: golioth
       path: modules/lib/golioth-firmware-sdk
-      revision: v0.17.0
+      revision: v0.18.0
       url: https://github.com/golioth/golioth-firmware-sdk.git
       west-commands: scripts/west-commands.yml
       submodules: true
@@ -46,6 +46,11 @@ manifest:
       path: deps/modules/lib/network-info
       revision: v1.2.0
       url: https://github.com/golioth/zephyr-network-info
+
+    - name: golioth-battery-monitor
+      path: deps/modules/lib/battery-monitor
+      revision: v1.0.0
+      url: https://github.com/golioth/battery-monitor
 
   self:
     path: app
