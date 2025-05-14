@@ -7,7 +7,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.5.0] - 2024-01-24
+## [1.6.0] - 2025-06-03
+
+### Changed
+
+- Merge changes from
+  [`golioth/reference-design-template@template_v2.7.2`](https://github.com/golioth/reference-design-template/tree/template_v2.7.2).
+- Removed `CONFIG_GOLIOTH_SAMPLE_SETTINGS` from prj.conf. With Golioth
+  Firmware SDK v0.18.1 this symbol is now automatically selected.
+
+### Fixed
+
+- CHANGELOG: use correct date for release v1.5.0
+
+## [1.5.0] - 2025-02-11
 
 ### Added
 
