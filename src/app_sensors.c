@@ -14,9 +14,14 @@ LOG_MODULE_REGISTER(app_sensors, LOG_LEVEL_DBG);
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/device.h>
+#include <zcbor_encode.h>
 
 #include "app_sensors.h"
 #include "app_settings.h"
+
+#ifdef CONFIG_NETWORK_INFO
+#include <network_info.h>
+#endif
 
 static struct golioth_client *client;
 
@@ -42,6 +47,41 @@ static void async_error_handler(struct golioth_client *client, enum golioth_stat
 		LOG_ERR("Async task failed: %d", status);
 		return;
 	}
+}
+
+void stream_network_info(void)
+{
+#ifdef CONFIG_NETWORK_INFO
+	uint8_t cbor_buf[512];
+	ZCBOR_STATE_E(zse, 1, cbor_buf, sizeof(cbor_buf), 1);
+
+	bool ok = zcbor_map_start_encode(zse, 1);
+	if (false == ok)
+	{
+		LOG_ERR("Failed to start network info map");
+		return;
+	}
+
+	network_info_add_to_map(zse);
+
+	ok = zcbor_map_end_encode(zse, 1);
+	if (false == ok)
+	{
+		LOG_ERR("Failed to end network info map");
+		return;
+	}
+
+	size_t cbor_size = zse->payload - cbor_buf;
+
+	int err = golioth_stream_set_async(client, "network", GOLIOTH_CONTENT_TYPE_CBOR, cbor_buf,
+				cbor_size, async_error_handler, NULL);
+	if (err) {
+		LOG_ERR("Failed to send sensor data to Golioth: %d", err);
+	}
+#else
+	LOG_DBG("Streaming network info unimplented in this build.");
+#endif
+
 }
 
 static enum golioth_status read_light_sensor(zcbor_state_t *zse)
@@ -332,6 +372,11 @@ void app_sensors_read_and_stream(void)
 		}
 	} else {
 		LOG_DBG("No connection available, skipping sending data to Golioth");
+	}
+
+	/* Only stream sensor data if connected */
+	if (golioth_client_is_connected(client)) {
+		stream_network_info();
 	}
 }
 

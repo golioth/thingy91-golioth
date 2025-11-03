@@ -44,7 +44,7 @@ manifest:
 
     - name: zephyr-network-info
       path: deps/modules/lib/network-info
-      revision: v1.2.0
+      revision: szczys/add-imsi
       url: https://github.com/golioth/zephyr-network-info
 
     - name: golioth-battery-monitor
