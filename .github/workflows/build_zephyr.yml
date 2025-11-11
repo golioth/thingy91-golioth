@@ -84,7 +84,11 @@ jobs:
           mv app/zephyr/zephyr.elf        ./artifacts/${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ steps.nicename.outputs.BOARD_NICENAME }}.elf
 
           if [[ "${{ inputs.BOARD }}" == "thingy91/nrf9160/ns" ]]; then
+            # Thingy91
             mv app/zephyr/zephyr.signed.hex ./artifacts/${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ steps.nicename.outputs.BOARD_NICENAME }}_mcuboot.hex
+          elif [[ "${{ inputs.BOARD }}" == "thingy91x/nrf9151/ns" ]]; then
+            # Thingy91x
+            mv dfu_application.zip ./artifacts/${{ github.event.repository.name }}_${{ inputs.TAG }}_${{ steps.nicename.outputs.BOARD_NICENAME }}_mcuboot.zip
           fi
 
       # Run IDs are unique per repo but are reused on re-runs
